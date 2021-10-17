@@ -10,10 +10,13 @@ To connect, connect the MIC,PTT,SPEKER to Analog Radio.
 ## Howto Devellop
 -Pull and Compile by PlatformIO on the Visual Studio Code.
 
-## M5Hotspot firmware installation (do it first, next, update via web)
-- 1.Connect the USB cable to the M5Hotspot.
-- 2.Download firmware and open the program ESP32 DOWNLOAD TOOL, set it in the firmware upload program, set the firmware to M5DV_Vxx.bin, location 0x10000 and partitions.bin at 0x8000 and bootloader.bin at 0x10000 and boot.bin at 0xe000, if not loaded, connect GPIO0 cable to GND, press START button finished, press power button or reset (red) again.
-- 3.Then go to WiFi SSID: M5Hotspot and open a browser to the website. http://192.168.4.1 Can be fixed Or turn on your Wi-Fi router.
+## M17Hotspot firmware installation (do it first, next, update via web)
+1.Connect the USB cable to the ESP32 Module.
+2.Download firmware and open the program ESP32 DOWNLOAD TOOL, set it in the firmware upload program, set the firmware to M17Hotspot_Vxx.bin, location 0x10000 and partitions.bin at 0x8000 and bootloader.bin at 0x10000 and boot.bin at 0xe000, if not loaded, connect GPIO0 cable to GND, press START button finished, press power button or reset (red) again.
+3.Then go to WiFi AP SSID: M17Hotspot and open a browser to the website. http://192.168.4.1 Can be fixed Or turn on your Wi-Fi router.
+
+## ESP32 Flash Download Tools
+https://www.espressif.com/en/support/download/other-tools
 
 ## Setting up using a web browser
 - 1.Set up Wi-Fi in the Settings tab. Connect to a router or device that shares the Internet. According to the router name (SSID) and password

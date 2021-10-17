@@ -3,7 +3,7 @@ How to Make digital voice radio (M17 Digital Voice) analog gateway yourself over
 The project made M17AnalogGateway to convert digital voice with M17 mode to Analog Radio.
 
 ## Simple Circuit
-![image](https://github.com/nakhonthai/M17AnalogGateway/blob/main/M17Hotspot.png)
+![image](https://github.com/nakhonthai/M17AnalogGateway/blob/master/schematic/M17Hotspot.png)
 
 To connect, connect the MIC,PTT,SPEKER to Analog Radio.
 

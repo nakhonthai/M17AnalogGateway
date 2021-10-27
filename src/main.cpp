@@ -22,7 +22,6 @@
 
 #include <time.h>
 #include <TimeLib.h>
-#include <TinyXML.h>
 
 #include "main.h"
 #include "webservice.h"

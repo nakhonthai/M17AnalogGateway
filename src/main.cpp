@@ -1,22 +1,24 @@
 /*
- Name:		M17 Analog Hotspot Gateway
+ Name:		M17 Analog Gateway
  Created:	1-Nov-2021 14:27:23
  Author:	HS5TQA/Atten
  Reflector: https://m17.dprns.com
 */
 
 #include <Arduino.h>
+#include "driver/adc.h"
 #include <driver/dac.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WiFiClient.h>
+#include "esp_adc_cal.h"
 
 #include <WiFiClientSecure.h>
 #include <ESP32Ping.h>
 #include <Preferences.h>
-#include <ctype.h> // for isNumber check
-#include <ButterworthFilter.h>	//In the codec2 folder in the library folder
+#include <ctype.h>			   // for isNumber check
+#include <ButterworthFilter.h> //In the codec2 folder in the library folder
 //#include <FastAudioFIFO.h>		//In the codec2 folder in the library folder
 #include <PubSubClient.h>
 
@@ -27,7 +29,6 @@
 #include "webservice.h"
 #include "m17.h"
 #include "spiffs.h"
-
 
 #define EEPROM_SIZE 512
 
@@ -42,17 +43,37 @@
 #define MIC_PIN 36
 #define PTT_PIN 32
 #define RSSI_PIN 33
+#define LED_TX 4
+#define LED_RX 2
 
-#define AGC_FRAME_BYTES     320
+#define V_REF 1100
+#define ADC1_CHANNEL (ADC1_CHANNEL_0) //GPIO 36 = MIC_PIN
+#define V_REF_TO_GPIO				  //Remove comment on define to route v_ref to GPIO
+
+#define AGC_FRAME_BYTES 320
 #define ADC_BUFFER_SIZE 320 //40ms of voice in 8KHz sampling frequency
 
 M17Flags connect_status;
-extern uint16_t txstreamid ;
+extern uint16_t txstreamid;
 extern uint16_t tx_cnt;
 extern unsigned short streamid;
 extern unsigned short frameid;
 extern unsigned long RxTimeout;
 extern unsigned long m17ConectTimeout;
+
+#ifdef OLED
+// For a connection via I2C using the Arduino Wire include:
+#include <Wire.h>		 // Only needed for Arduino 1.6.5 and earlier
+#include "SSD1306Wire.h" // legacy: #include "SSD1306.h"
+// OR #include "SH1106Wire.h"   // legacy: #include "SH1106.h"
+
+// Initialize the OLED display using Arduino Wire:
+SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_64); // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h e.g. https://github.com/esp8266/Arduino/blob/master/variants/nodemcu/pins_arduino.h
+// SSD1306Wire display(0x3c, D3, D5);  // ADDRESS, SDA, SCL  -  If not, they can be specified manually.
+// SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);  // ADDRESS, SDA, SCL, OLEDDISPLAY_GEOMETRY  -  Extra param required for 128x32 displays.
+// SH1106Wire display(0x3c, SDA, SCL);     // ADDRESS, SDA, SCL
+
+#endif
 
 int16_t adc_buffer[ADC_BUFFER_SIZE];
 
@@ -67,32 +88,32 @@ ButterworthFilter hp_filter(600, 8000, ButterworthFilter::ButterworthFilter::Hig
 //กรองความถี่ต่ำผ่าน <3KHz  LPF Butterworth Filter. ความถี่เสียงที่มากกว่า 3KHz ไม่ใช่ความถี่เสียงคนพูดจะถูกกรองทิ้ง
 ButterworthFilter lp_filter(3000, 8000, ButterworthFilter::ButterworthFilter::Lowpass, 2);
 
-CODEC2* codec2_3200;
-CODEC2* codec2_1600;
+CODEC2 *codec2_3200;
+CODEC2 *codec2_1600;
 
 //กำหนดค่าเริ่มต้นใช้โหมดของ Codec2
 int mode = CODEC2_MODE_3200;
 
 //Queue<char> audioq(300);
-cppQueue	audioq(sizeof(uint8_t), 800, IMPLEMENTATION);	// Instantiate queue
-cppQueue	pcmq(sizeof(int16_t), 8000, IMPLEMENTATION);	// Instantiate queue
-cppQueue	adcq(sizeof(int16_t), 8000, IMPLEMENTATION);	// Instantiate queue
+cppQueue audioq(sizeof(uint8_t), 800, IMPLEMENTATION); // Instantiate queue
+cppQueue pcmq(sizeof(int16_t), 8000, IMPLEMENTATION);  // Instantiate queue
+cppQueue adcq(sizeof(int16_t), 8000, IMPLEMENTATION);  // Instantiate queue
 
 int nstart_bit, nend_bit, bit_rate;
-short* buf;
-unsigned char* bits;
-float* softdec_bits;
+short *buf;
+unsigned char *bits;
+float *softdec_bits;
 
-unsigned char snd[20000];
-int snd_count = 0;
-int snd_rd, snd_wr, snd_idx;
-bool snd_out = false;
+// unsigned char snd[20000];
+// int snd_count = 0;
+// int snd_rd, snd_wr, snd_idx;
+// bool snd_out = false;
 
-unsigned char c2[1000];
+//unsigned char c2[1000];
 int c2_offset = 0;
 int nsam, nbit, nbyte, i, frames, bits_proc, bit_errors, error_mode;
 
-String srcCall,mycall, urCall, rptr1;
+String srcCall, mycall, urCall, rptr1;
 
 SPIClass spiSD(HSPI);
 
@@ -106,9 +127,8 @@ int16_t adcR;
 int ppm_Level = 0;
 int ppm_temp = 0;
 
-
-int vox_gain=25;
-bool vox=false;
+int vox_gain = 25;
+bool vox = false;
 bool rxRef = false;
 bool tx = false;
 bool firstTX = false;
@@ -123,16 +143,16 @@ TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskDSPHandle;
 TaskHandle_t taskUIHandle;
 
-
 time_t systemUptime = 0;
 time_t wifiUptime = 0;
 
-uint8_t checkSum(uint8_t* ptr, uint16_t count)
+uint8_t checkSum(uint8_t *ptr, uint16_t count)
 {
 	uint8_t lrc, tmp;
 	uint16_t i;
 	lrc = 0;
-	for (i = 0; i < count; i++) {
+	for (i = 0; i < count; i++)
+	{
 		tmp = ptr[i];
 		lrc = lrc ^ tmp;
 	}
@@ -142,8 +162,8 @@ uint8_t checkSum(uint8_t* ptr, uint16_t count)
 void saveEEPROM()
 {
 	uint8_t chkSum = 0;
-	byte* ptr;
-	ptr = (byte*)&config;
+	byte *ptr;
+	ptr = (byte *)&config;
 	EEPROM.writeBytes(1, ptr, sizeof(Configuration));
 	chkSum = checkSum(ptr, sizeof(Configuration));
 	EEPROM.write(0, chkSum);
@@ -151,18 +171,19 @@ void saveEEPROM()
 }
 
 //กำหนดค่าคอนฟิกซ์เริ่มต้น
-void defaultConfig() {
+void defaultConfig()
+{
 	Serial.println(F("Default configure mode!"));
 	sprintf(config.aprs_mycall, "APRSTH");
 	config.aprs_ssid = 5;
 	sprintf(config.aprs_host, "aprs.dprns.com");
 	config.aprs_port = 14580;
-	config.aprs_passcode[0]=0;
+	config.aprs_passcode[0] = 0;
 	sprintf(config.aprs_filter, "b/HS*/E2*");
 	sprintf(config.id, "M5DV");
 	sprintf(config.wifi_ssid, "APRSTH");
 	sprintf(config.wifi_pass, "aprsthnetwork");
-	sprintf(config.wifi_ap_ssid, "M17Hotspot");
+	sprintf(config.wifi_ap_ssid, "M17Analog");
 	config.wifi_ap_pass[0] = 0;
 	//	sprintf(config.wifi_ap_pass, "");
 	sprintf(config.reflector_host, "203.150.19.24");
@@ -172,7 +193,7 @@ void defaultConfig() {
 	sprintf(config.authUser, "admin");
 	sprintf(config.authPass, "admin");
 	sprintf(config.mycall, "mycall");
-	config.mymodule = 'M';
+	config.mymodule = 'L';
 	config.aprs = false;
 	config.wifi = true;
 	config.wifi_mode = WIFI_AP_STA;
@@ -182,10 +203,12 @@ void defaultConfig() {
 	config.gps_alt = 5;
 	config.volume = 10;
 	config.mic = 10;
-  config.vox_delay=10;
-  config.vox_level=10;
-  config.codec2_mode=CODEC2_MODE_3200;
-  saveEEPROM();
+	config.vox_delay = 10;
+	config.vox_level = 10;
+	config.sql = true;
+	config.sql_active = 0;
+	config.codec2_mode = CODEC2_MODE_3200;
+	saveEEPROM();
 }
 
 pkgListType pkgList[PKGLISTSIZE];
@@ -194,20 +217,22 @@ unsigned char pkgList_index = 0;
 void sort(pkgListType a[], int size);
 void sortPkgDesc(pkgListType a[], int size);
 
-void taskDSP(void* pvParameters);
-void taskNetwork(void* pvParameters);
-void taskUI(void* pvParameters);
-
+void taskDSP(void *pvParameters);
+void taskNetwork(void *pvParameters);
+void taskUI(void *pvParameters);
 
 //Bandpass Filter
-void bp_filter(float *h,int n){
-  int i=0;
-  for(i=0;i<n;i++){
-    h[i]=lp_filter.Update(h[i]);
-  }
-  for(i=0;i<n;i++){
-    h[i]=hp_filter.Update(h[i]);
-  }
+void bp_filter(float *h, int n)
+{
+	int i = 0;
+	for (i = 0; i < n; i++)
+	{
+		h[i] = lp_filter.Update(h[i]);
+	}
+	for (i = 0; i < n; i++)
+	{
+		h[i] = hp_filter.Update(h[i]);
+	}
 }
 
 //เข้ารหัสและถอดรหัสเสียง Codec2
@@ -215,8 +240,8 @@ void process_audio()
 {
 	uint8_t c2Buf[8];
 	short audioBuf[320];
-  float audiof[320];
-	
+	float audiof[320];
+
 	int16_t adc;
 
 	int pcmWidth = 160;
@@ -226,49 +251,61 @@ void process_audio()
 	else
 		pcmWidth = 160;
 
-	if (tx) {
-			if (adcq.getCount() >= pcmWidth) {
-				//Serial.print("PCM: " );
-				for (int x = 0; x < pcmWidth; x++) {
-					if (!adcq.pop(&adc)) break;
-          audiof[x]=(float)adc;
+	if (tx)
+	{
+		if (adcq.getCount() >= pcmWidth)
+		{
+			//Serial.print("PCM: " );
+			for (int x = 0; x < pcmWidth; x++)
+			{
+				if (!adcq.pop(&adc))
+					break;
+				audiof[x] = (float)adc;
 
-					ppm_temp = (int)abs((int16_t)audiof[x]);
-					if (ppm_temp > ppm_Level)
-						ppm_Level = ((ppm_Level * 255) + ppm_temp) >> 8;
-					else
-						ppm_Level = (ppm_Level * 16383) >> 14;
-					//Serial.printf("%02x ", (unsigned char)lsb);
-				}
-        bp_filter(audiof,pcmWidth);
-        for(int i=0;i<pcmWidth;i++) audioBuf[i]=(int16_t)(audiof[i]*((float)config.mic/10));
-				//Serial.println();
-				if(mode == CODEC2_MODE_1600)
-					codec2_encode(codec2_1600, c2Buf, audioBuf);
+				ppm_temp = (int)abs((int16_t)audiof[x]);
+				if (ppm_temp > ppm_Level)
+					ppm_Level = ((ppm_Level * 255) + ppm_temp) >> 8;
 				else
-					codec2_encode(codec2_3200, c2Buf, audioBuf);
-
-				//Serial.print("Encode: ");
-				for (int x = 0; x < 8; x++)
-        {
-					audioq.push(&c2Buf[x]);
-					//Serial.printf("%02x ", (unsigned char)c2Buf[x]);
-				}
-				//timeUse = millis() - msTimer;
-				//Serial.println();
-				//Serial.printf("Encode Time: %d ms.\n", (int)timeUse);
+					ppm_Level = (ppm_Level * 16383) >> 14;
+				//Serial.printf("%02x ", (unsigned char)lsb);
 			}
+			bp_filter(audiof, pcmWidth);
+			for (int i = 0; i < pcmWidth; i++)
+				audioBuf[i] = (int16_t)(audiof[i] * ((float)config.mic / 10));
+			//Serial.println();
+			if (mode == CODEC2_MODE_1600)
+				codec2_encode(codec2_1600, c2Buf, audioBuf);
+			else
+				codec2_encode(codec2_3200, c2Buf, audioBuf);
+
+			//Serial.print("Encode: ");
+			for (int x = 0; x < 8; x++)
+			{
+				if(!audioq.push(&c2Buf[x]))
+				{
+					Serial.println("audioq is FULL");
+				}
+				//Serial.printf("%02x ", (unsigned char)c2Buf[x]);
+			}
+			//timeUse = millis() - msTimer;
+			//Serial.println();
+			//Serial.printf("Encode Time: %d ms.\n", (int)timeUse);
+		}
 	}
-	else {
+	else
+	{
 		int packetSize = audioq.getCount();
-		if (packetSize >= 8) {
+		if (packetSize >= 8)
+		{
 			//Serial.printf("nbyte= %d\n", nbyte);
 			//Serial.printf("nsam= %d\n", nsam);
-			snd_count = 0;
+			//snd_count = 0;
 
 			//Serial.print("CODEC2: " + frame);
-			for (int x = 0; x < 8; x++) {
-				if (!audioq.pop(&c2Buf[x])) break;
+			for (int x = 0; x < 8; x++)
+			{
+				if (!audioq.pop(&c2Buf[x]))
+					break;
 				//Serial.printf("%02x ", (unsigned char)c2Buf[x]);
 			}
 			//Serial.println();
@@ -280,9 +317,12 @@ void process_audio()
 
 			for (int x = 0; x < pcmWidth; x++)
 			{
-				//float auf = (float)audioBuf[x]*((float)config.volume/10);				
-				//audioBuf[x] = (int16_t)hp_filter.Update(auf);      
-				pcmq.push(&audioBuf[x]);
+				//float auf = (float)audioBuf[x]*((float)config.volume/10);
+				float auf = (float)audioBuf[x] * 2.0f;
+				audioBuf[x] = (int16_t)hp_filter.Update(auf);
+				if(!pcmq.push(&audioBuf[x])){
+					Serial.println("audioBuf is FULL");
+				}
 
 				// ppm_temp = (int)abs(audioBuf[x]);
 				// if (ppm_temp > ppm_Level)
@@ -296,56 +336,70 @@ void process_audio()
 	}
 }
 
-hw_timer_t* timer = NULL;
+hw_timer_t *timer = NULL;
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
 // Code with critica section
-int offset=29760,offset_new=0,adc_count=0;
-
+int offset = 29760, offset_new = 0, adc_count = 0;
+int sample;
 //แซมปลิ้งเสียง 8,000 ครั้งต่อวินาที ทั้งเข้า ADC และออก DAC
-void IRAM_ATTR onTime() {
+void IRAM_ATTR onTime()
+{
 	portENTER_CRITICAL_ISR(&timerMux);
 	//len = pcmq.getCount();
-  int sample;
-	if (tx) {
-    // Detect ADC overflow
-    sample=(int)analogRead(MIC_PIN);
-    if(sample>4095) sample=4095;
-    adcR = (int16_t)((sample<<4)-offset); //12bit -> 16bit,convert to sign,29760
+	//int sample;
+	if (tx)
+	{
+		// Detect ADC overflow
+		//sample=(int)analogRead(MIC_PIN);
+		sample = adc1_get_raw(ADC1_CHANNEL);
+		if (sample > 4095)
+			sample = 4095;
+		adcR = (int16_t)((sample << 4) - offset); //12bit -> 16bit,convert to sign,29760
 		adcq.push(&adcR);
-	}else {
-    //รับเสียงจากเซิร์ฟเวอร์ M17 ออกลำโพง
-		if (pcmq.getCount() > 0) {
+	}
+	else
+	{
+		//รับเสียงจากเซิร์ฟเวอร์ M17 ออกลำโพง
+		if (pcmq.getCount() > 0)
+		{
 			pcmq.pop(&adcR);
 			sndW = (uint8_t)((((int)adcR + 32768) >> 8) & 0xFF);
 			dacWrite(SPEAKER_PIN, sndW);
-		}else{
-      //โหมด stanby แต่ไม่มีข้อมูลเสียง
-      sample=(int)analogRead(MIC_PIN);
-      adcR = (int16_t)((sample<<4)-offset); //12bit -> 16bit,convert to sign
-      ppm_temp = (int)abs(adcR);
-      ppm_Level = ((ppm_Level * 255) + ppm_temp) >> 8;
-    }
+		}
+		else
+		{
+			//โหมด stanby แต่ไม่มีข้อมูลเสียง
+			sample = (int)analogRead(MIC_PIN);
+			adcR = (int16_t)((sample << 4) - offset); //12bit -> 16bit,convert to sign
+			ppm_temp = (int)abs(adcR);
+			ppm_Level = ((ppm_Level * 255) + ppm_temp) >> 8;
+		}
 	}
 	portEXIT_CRITICAL_ISR(&timerMux);
 }
 
+const char *lastTitle = "LAST HERT";
 
-const char* lastTitle = "LAST HERT";
-
-char pkgList_Find(char* call) {
+char pkgList_Find(char *call)
+{
 	char i;
-	for (i = 0; i < PKGLISTSIZE; i++) {
-		if (strstr(pkgList[(int)i].calsign, call) != NULL) return i;
+	for (i = 0; i < PKGLISTSIZE; i++)
+	{
+		if (strstr(pkgList[(int)i].calsign, call) != NULL)
+			return i;
 	}
 	return -1;
 }
 
-char pkgListOld() {
+char pkgListOld()
+{
 	char i, ret = 0;
 	time_t minimum = pkgList[0].time;
-	for (i = 1; i < PKGLISTSIZE; i++) {
-		if (pkgList[(int)i].time < minimum) {
+	for (i = 1; i < PKGLISTSIZE; i++)
+	{
+		if (pkgList[(int)i].time < minimum)
+		{
 			minimum = pkgList[(int)i].time;
 			ret = i;
 		}
@@ -353,17 +407,21 @@ char pkgListOld() {
 	return ret;
 }
 
-void sort(pkgListType a[], int size) {
+void sort(pkgListType a[], int size)
+{
 	pkgListType t;
-	char* ptr1;
-	char* ptr2;
-	char* ptr3;
-	ptr1 = (char*)& t;
-	for (int i = 0; i < (size - 1); i++) {
-		for (int o = 0; o < (size - (i + 1)); o++) {
-			if (a[o].time < a[o + 1].time) {
-				ptr2 = (char*)& a[o];
-				ptr3 = (char*)& a[o + 1];
+	char *ptr1;
+	char *ptr2;
+	char *ptr3;
+	ptr1 = (char *)&t;
+	for (int i = 0; i < (size - 1); i++)
+	{
+		for (int o = 0; o < (size - (i + 1)); o++)
+		{
+			if (a[o].time < a[o + 1].time)
+			{
+				ptr2 = (char *)&a[o];
+				ptr3 = (char *)&a[o + 1];
 				memcpy(ptr1, ptr2, sizeof(pkgListType));
 				memcpy(ptr2, ptr3, sizeof(pkgListType));
 				memcpy(ptr3, ptr1, sizeof(pkgListType));
@@ -372,17 +430,21 @@ void sort(pkgListType a[], int size) {
 	}
 }
 
-void sortPkgDesc(pkgListType a[], int size) {
+void sortPkgDesc(pkgListType a[], int size)
+{
 	pkgListType t;
-	char* ptr1;
-	char* ptr2;
-	char* ptr3;
-	ptr1 = (char*)& t;
-	for (int i = 0; i < (size - 1); i++) {
-		for (int o = 0; o < (size - (i + 1)); o++) {
-			if (a[o].pkg < a[o + 1].pkg) {
-				ptr2 = (char*)& a[o];
-				ptr3 = (char*)& a[o + 1];
+	char *ptr1;
+	char *ptr2;
+	char *ptr3;
+	ptr1 = (char *)&t;
+	for (int i = 0; i < (size - 1); i++)
+	{
+		for (int o = 0; o < (size - (i + 1)); o++)
+		{
+			if (a[o].pkg < a[o + 1].pkg)
+			{
+				ptr2 = (char *)&a[o];
+				ptr3 = (char *)&a[o + 1];
 				memcpy(ptr1, ptr2, sizeof(pkgListType));
 				memcpy(ptr2, ptr3, sizeof(pkgListType));
 				memcpy(ptr3, ptr1, sizeof(pkgListType));
@@ -391,16 +453,18 @@ void sortPkgDesc(pkgListType a[], int size) {
 	}
 }
 
-void pkgListUpdate(char* call, bool type) 
+void pkgListUpdate(char *call, bool type)
 {
 	char i = pkgList_Find(call);
-	if (i != 255) { //Found call in old pkg
+	if (i != 255)
+	{ //Found call in old pkg
 		pkgList[(uint)i].time = now();
 		pkgList[(uint)i].pkg++;
 		pkgList[(uint)i].type = type;
 		//Serial.print("Update: ");
 	}
-	else {
+	else
+	{
 		i = pkgListOld();
 		pkgList[(uint)i].time = now();
 		pkgList[(uint)i].pkg = 1;
@@ -415,59 +479,165 @@ void pkgListUpdate(char* call, bool type)
 // Define meter size
 #define M_SIZE 0.5
 
-float ltx = 0;    // Saved x coord of bottom of needle
+float ltx = 0;									 // Saved x coord of bottom of needle
 uint16_t osx = M_SIZE * 120, osy = M_SIZE * 120; // Saved x & y coords
-uint32_t updateTime = 0;       // time for next update
-int old_analog = -999; // Value last displayed
-int old_digital = -999; // Value last displayed
+uint32_t updateTime = 0;						 // time for next update
+int old_analog = -999;							 // Value last displayed
+int old_digital = -999;							 // Value last displayed
 uint16_t vuOffsetX = 2;
 uint16_t vuOffsetY = 23;
-
 
 String getValue(String data, char separator, int index)
 {
 	int found = 0;
-	int strIndex[] = { 0, -1 };
+	int strIndex[] = {0, -1};
 	int maxIndex = data.length();
 
-	for (int i = 0; i <= maxIndex && found <= index; i++) {
-		if (data.charAt(i) == separator || i == maxIndex) {
+	for (int i = 0; i <= maxIndex && found <= index; i++)
+	{
+		if (data.charAt(i) == separator || i == maxIndex)
+		{
 			found++;
 			strIndex[0] = strIndex[1] + 1;
 			strIndex[1] = (i == maxIndex) ? i + 1 : i;
 		}
 	}
 	return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
-}  // END
+} // END
 
-boolean isValidNumber(String str) 
+boolean isValidNumber(String str)
 {
 	for (byte i = 0; i < str.length(); i++)
 	{
-		if (isDigit(str.charAt(i))) return true;
+		if (isDigit(str.charAt(i)))
+			return true;
 	}
 	return false;
 }
 
-void setup() {
-  int mode;
-	byte* ptr;
-	pinMode(32, INPUT_PULLUP);
-	pinMode(RSSI_PIN, INPUT_PULLUP);
+#ifdef OLED
+void topBar(int ws)
+{
+
+	int wifiSignal = ws;
+	uint8_t wifi = 0, i;
+	int x, y;
+	display.setColor(BLACK);
+	display.fillRect(0, 0, 128, 16);
+	//Draw Attena Signal
+	display.setColor(WHITE);
+	display.drawTriangle(0, 0, 6, 0, 3, 3);
+	display.drawLine(3, 0, 3, 7);
+	x = 5;
+	y = 3;
+	wifi = (wifiSignal + 100) / 10;
+	if (wifi > 5)
+		wifi = 5;
+	if (wifi < 0)
+		wifi = 0;
+	for (i = 0; i < wifi; i++)
+	{
+		display.drawLine(x, 7 - y, x, 7);
+		x += 2;
+		y++;
+	}
+	// display.setCursor(0, 8);
+	// display.print(wifiSignal);
+	// display.print("dBm");
+	display.drawString(0, 6, String(wifiSignal) + "dBm");
+
+	// x = 109;
+	// display.drawLine(0 + x, 1, 2 + x, 1);
+	// display.drawLine(0 + x, 6, 2 + x, 6);
+	// display.drawLine(0 + x, 2, 0 + x, 5);
+	// display.drawLine(2 + x, 0, 18 + x, 0);
+	// display.drawLine(2 + x, 7, 18 + x, 7);
+	// display.drawLine(18 + x, 1, 18 + x, 6);
+	//Wifi Status
+	if (WiFi.status() == WL_CONNECTED)
+	{
+		// display.setCursor(15, 0);
+		// display.print("WiFi");
+		display.drawString(15, 0, "WiFi");
+	}
+
+	//if (dcs_is_connected()) {
+	// display.setCursor(50, 0);
+	// display.print("[");
+	// display.print(config.reflector_module);
+	// display.print("]");
+	display.drawString(50, 1, "[" + String(config.reflector_module) + "]");
+	//display.drawLine(50,0,65,8,WHITE);
+	//}
+
+	// display.setCursor(50, 8);
+	// display.print(hour());
+	// display.print(":");
+	// display.print(minute());
+	// display.print(":");
+	// display.println(second());
+	display.setTextAlignment(TEXT_ALIGN_LEFT);
+	display.drawString(50, 6, String(hour()) + ":" + String(minute()) + ":" + String(second()));
+	display.display();
+}
+#endif
+
+void setup()
+{
+	int mode;
+	byte *ptr;
+
+	pinMode(RSSI_PIN, INPUT);
 	pinMode(PTT_PIN, OUTPUT);
-
-  digitalWrite(PTT_PIN,LOW);
-
-	analogReadResolution(12);             // Sets the sample bits and read resolution, default is 12-bit (0 - 4095), range is 9 - 12 bits
-	analogSetWidth(12);                   // Sets the sample bits and read resolution, default is 12-bit (0 - 4095), range is 9 - 12 bits
-	analogSetPinAttenuation(MIC_PIN, ADC_11db); //Pressure 0-3.3V
-  
-  enableLoopWDT();
-  enableCore0WDT();
-  enableCore1WDT();
-  //esp_task_wdt_init(TWDT_TIMEOUT_S, false);
+	pinMode(LED_RX, OUTPUT);
+	pinMode(LED_TX, OUTPUT);
+	digitalWrite(PTT_PIN, LOW);
 
 	Serial.begin(115200);
+
+#ifdef OLED
+	// Initialising the UI will init the display too.
+	display.init();
+	// clear the display
+	display.clear();
+	display.flipScreenVertically();
+	display.setTextAlignment(TEXT_ALIGN_LEFT);
+	//display.drawString(128, 54, String(millis()));
+	// write the buffer to the display
+	topBar(-100);
+	display.display();
+#endif
+
+#ifndef V_REF_TO_GPIO
+	//Init ADC and Characteristics
+	//esp_adc_cal_characteristics_t characteristics;
+	adc1_config_width(ADC_WIDTH_BIT_12);
+	adc1_config_channel_atten(ADC1_CHANNEL, ADC_ATTEN_DB_11);
+	//esp_adc_cal_get_characteristics(V_REF, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, &characteristics);
+	Serial.printf("v_ref routed to 3.3V\n");
+#else
+	//Init ADC and Characteristics
+	//esp_adc_cal_characteristics_t characteristics;
+	adc1_config_width(ADC_WIDTH_BIT_12);
+	adc1_config_channel_atten(ADC1_CHANNEL, ADC_ATTEN_DB_0);
+	//esp_adc_cal_get_characteristics(V_REF, ADC_ATTEN_DB_0, ADC_WIDTH_BIT_12, &characteristics);
+	//Get v_ref
+	esp_err_t status;
+	status = adc2_vref_to_gpio(GPIO_NUM_25);
+	if (status == ESP_OK)
+	{
+		Serial.printf("v_ref routed to GPIO 25\n");
+	}
+	else
+	{
+		Serial.printf("failed to route v_ref\n");
+	}
+#endif
+
+	enableLoopWDT();
+	enableCore0WDT();
+	enableCore1WDT();
+	//esp_task_wdt_init(TWDT_TIMEOUT_S, false);
 
 	if (!EEPROM.begin(EEPROM_SIZE))
 	{
@@ -476,53 +646,61 @@ void setup() {
 
 	delay(100);
 
-  //ตรวจสอบคอนฟิกซ์ผิดพลาด
-  ptr = (byte*)&config;
+	//ตรวจสอบคอนฟิกซ์ผิดพลาด
+	ptr = (byte *)&config;
 	EEPROM.readBytes(1, ptr, sizeof(Configuration));
 	uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-	if (EEPROM.read(0) != chkSum) {
-    Serial.println("Config EEPROM Error!");
-		defaultConfig();    
+	if (EEPROM.read(0) != chkSum)
+	{
+		Serial.println("Config EEPROM Error!");
+		defaultConfig();
 	}
 
 	// if (digitalRead(32) == LOW) {
 	// 	defaultConfig();
-  //   Serial.println("Default configure!");
+	//   Serial.println("Default configure!");
 	// 	delay(3000);
 	// }
 	// else {
-		ptr = (byte*)&config;
-		Serial.println("Load configure!");
-		EEPROM.readBytes(1, ptr, sizeof(Configuration));
+	ptr = (byte *)&config;
+	Serial.println("Load configure!");
+	EEPROM.readBytes(1, ptr, sizeof(Configuration));
 	//}
+
+	if (!config.sql_active)
+		pinMode(RSSI_PIN, INPUT_PULLUP); //If SQL Active Low to pullup GPIO PIN
 
 	connect_status = DISCONNECTED;
 
-	
 #ifdef SDCARD
-	spiSD.begin(SDCARD_CLK, SDCARD_MISO, SDCARD_MOSI, -1);//SCK,MISO,MOSI,ss 
+	spiSD.begin(SDCARD_CLK, SDCARD_MISO, SDCARD_MOSI, -1); //SCK,MISO,MOSI,ss
 
-	if (!SD.begin(SDCARD_CS, spiSD, 4000000U)) {
+	if (!SD.begin(SDCARD_CS, spiSD, 4000000U))
+	{
 		Serial.println(F("SD CARD Initialization failed!"));
 	}
 	uint8_t cardType = SD.cardType();
 
-	if (cardType == CARD_NONE) {
+	if (cardType == CARD_NONE)
+	{
 		Serial.println(F("No SD card attached"));
 	}
 
 	Serial.print(F("SD Card Type: "));
-	if (cardType == CARD_MMC) {
+	if (cardType == CARD_MMC)
+	{
 		Serial.println(F("MMC"));
-
 	}
-	else if (cardType == CARD_SD) {
+	else if (cardType == CARD_SD)
+	{
 		Serial.println(F("SDSC"));
 	}
-	else if (cardType == CARD_SDHC) {
+	else if (cardType == CARD_SDHC)
+	{
 		Serial.println(F("SDHC"));
 	}
-	else {
+	else
+	{
 		Serial.println(F("UNKNOWN"));
 	}
 
@@ -532,11 +710,11 @@ void setup() {
 #endif
 
 	//Start a timer at 8kHz to sample the ADC and play the audio on the DAC.
-	timer = timerBegin(3, 500, true); // 80 MHz / 500 = 160KHz MHz hardware clock
-	timerAttachInterrupt(timer, &onTime, true); // Attaches the handler function to the timer 
-	timerAlarmWrite(timer, 20, true); // Interrupts when counter == 20, 8.000 times a second
+	timer = timerBegin(3, 500, true);			// 80 MHz / 500 = 160KHz MHz hardware clock
+	timerAttachInterrupt(timer, &onTime, true); // Attaches the handler function to the timer
+	timerAlarmWrite(timer, 20, true);			// Interrupts when counter == 20, 8.000 times a second
 	//timerAlarmEnable(adcTimer); //Activate it
-		
+
 	//Init codec2
 	mode = CODEC2_MODE_1600;
 	codec2_1600 = codec2_create(mode);
@@ -560,102 +738,136 @@ void setup() {
 	codec2_set_natural_or_gray(codec2_3200, !natural);
 	codec2_set_lpc_post_filter(codec2_3200, 1, 0, 0.9, 0.3);
 	Serial.printf("Create CODEC2_3200 : nsam=%d ,nbit=%d ,nbyte=%d\n", nsam, nbit, nbyte);
-  
-	xTaskCreatePinnedToCore(
-		taskNetwork,     /* Function to implement the task */
-		"taskNetwork",   /* Name of the task */
-		8192,      /* Stack size in words */
-		NULL,      /* Task input parameter */
-		2,         /* Priority of the task */
-		&taskNetworkHandle,      /* Task handle. */
-		1);        /* Core where the task should run */
 
 	xTaskCreatePinnedToCore(
-		taskDSP,     /* Function to implement the task */
-		"taskDSP",   /* Name of the task */
-		32768,      /* Stack size in words */
-		NULL,      /* Task input parameter */
-		1,         /* Priority of the task */
-		&taskDSPHandle,      /* Task handle. */
-		0);        /* Core where the task should run */
-	xTaskCreatePinnedToCore(
-		taskUI,     /* Function to implement the task */
-		"taskUI",   /* Name of the task */
-		4096,      /* Stack size in words */
-		NULL,      /* Task input parameter */
-		1,         /* Priority of the task */
-		&taskUIHandle,      /* Task handle. */
-		1);        /* Core where the task should run */
-}
+		taskNetwork,		/* Function to implement the task */
+		"taskNetwork",		/* Name of the task */
+		8192,				/* Stack size in words */
+		NULL,				/* Task input parameter */
+		2,					/* Priority of the task */
+		&taskNetworkHandle, /* Task handle. */
+		1);					/* Core where the task should run */
 
-bool pressed(const int pin)
-{
-	if (digitalRead(pin) == LOW)
-	{
-		delay(500);
-		return true;
-	}
-	return false;
+	xTaskCreatePinnedToCore(
+		taskDSP,		/* Function to implement the task */
+		"taskDSP",		/* Name of the task */
+		32768,			/* Stack size in words */
+		NULL,			/* Task input parameter */
+		1,				/* Priority of the task */
+		&taskDSPHandle, /* Task handle. */
+		0);				/* Core where the task should run */
+	xTaskCreatePinnedToCore(
+		taskUI,		   /* Function to implement the task */
+		"taskUI",	   /* Name of the task */
+		4096,		   /* Stack size in words */
+		NULL,		   /* Task input parameter */
+		1,			   /* Priority of the task */
+		&taskUIHandle, /* Task handle. */
+		1);			   /* Core where the task should run */
 }
 
 bool firstRxDisp = false;
 
-void loop() {
+void loop()
+{
 	vTaskDelay(1 / portTICK_PERIOD_MS);
 	serviceHandle();
 }
 
 int timeHalfSec = 0;
 long idleTimeout = 0;
+long tickSec = 0;
 bool firstIdle = true;
 // uint8_t micCur = 0;
 // uint8_t volCur = 0;
-void taskUI(void* pvParameters) {
-  int voxCount=0;
+void taskUI(void *pvParameters)
+{
+	int voxCount = 0;
 	String info = "";
 
 	idleTimeout = 0;
 	// micCur = config.mic;
 	// volCur = config.volume;
 
-  vox=false;
-  tx=false;
-  //timerAlarmEnable(timer);
-  int mic_level;
-  long voxtime=millis()+10;
+	vox = false;
+	tx = false;
+	//timerAlarmEnable(timer);
+	int mic_level;
+	long voxtime = millis() + 10;
 
-	for (;;) {
+	for (;;)
+	{
 		//long now = millis();
 		//wdtDisplayTimer = now;
 		//Serial.print("task1 Uptime (ms): ");
 		//Serial.println(millis());
 		vTaskDelay(10 / portTICK_PERIOD_MS);
-  
-    if(voxtime<millis()){
-      voxtime=millis()+10;
-      mic_level=ppm_Level>>6;          
-      if(mic_level>config.vox_level){        
-        if(voxCount<config.vox_delay) {
-          voxCount++;
-        }else{
-          //Serial.printf("Vox Active ppm=%d\n",mic_level);
-          vox=true;
-        }
-      }else{
-        if(voxCount>0){
-          voxCount--;
-        }else{
-          vox=false;
-          //Serial.printf("Vox- ppm=%d\n",ppm_Level);
-        }
-      }
-    }
+#ifdef OLED
+		if (millis() > tickSec)
+		{
+			tickSec = millis() + 1000;
+			topBar(WiFi.RSSI());
+		}
+#endif
+		if (config.sql)
+		{
+			if (config.sql_active)
+			{
+				if (digitalRead(RSSI_PIN)) //SQL Active High
+					vox = true;
+				else
+					vox = false;
+			}
+			else
+			{
+				if (digitalRead(RSSI_PIN)) //SQL Active Low
+					vox = false;
+				else
+					vox = true;
+			}
+		}
+		else
+		{
+			//Vox delay and Level
+			if (voxtime < millis())
+			{
+				voxtime = millis() + 10;
+				mic_level = ppm_Level >> 6;
+				if (mic_level > config.vox_level)
+				{
+					if (voxCount < config.vox_delay)
+					{
+						voxCount++;
+					}
+					else
+					{
+						//Serial.printf("Vox Active ppm=%d\n",mic_level);
+						vox = true;
+					}
+				}
+				else
+				{
+					if (voxCount > 0)
+					{
+						voxCount--;
+					}
+					else
+					{
+						vox = false;
+						//Serial.printf("Vox- ppm=%d\n",ppm_Level);
+					}
+				}
+			}
+		}
 
+		if (connect_status != DISCONNECTED)
+		{
 			//PTT KEY
-			//if ((digitalRead(37) == LOW) && (!rxRef)) {
-			if (vox) {
+			if (vox)
+			{
 				//Start Transmit
-				if (tx == false) {
+				if (tx == false)
+				{
 					tx = true;
 					firstTX = true;
 					firstIdle = true;
@@ -674,138 +886,167 @@ void taskUI(void* pvParameters) {
 					pinMode(SPEAKER_PIN, OUTPUT);
 					digitalWrite(SPEAKER_PIN, 0);
 					timerAlarmEnable(timer);
-					Serial.println("<Start TX to Ref.>");	
-          digitalWrite(PTT_PIN,LOW);	
+					Serial.println("<Start TX to Ref.>");
+					digitalWrite(PTT_PIN, LOW);
+					digitalWrite(LED_RX, HIGH);
+					digitalWrite(LED_TX, LOW);
 				}
 				tx = true;
-				//dac_output_disable(DAC_CHANNEL_1);
 				idleTimeout = millis();
 			}
-			else {
+			else
+			{
 				//End Transmit
-				if (tx) {
+				if (tx)
+				{
 					//timerAlarmDisable(timer);
 					Serial.println("<END TX>");
+					digitalWrite(LED_TX, LOW);
+					digitalWrite(LED_RX, LOW);
 				}
 				tx = false;
 				tx_cnt = 0x8000;
 			}
 
 			//End RX
-			if (millis() > (RxTimeout + 800)) {
-				if (rxRef) {
+			if (millis() > (RxTimeout + 800))
+			{
+				if (rxRef)
+				{
 					rxRef = false;
 					firstRX = false;
 					firstIdle = true;
 					Serial.println("<END RX>");
-          digitalWrite(PTT_PIN,LOW); //PTT Key end to radio
+					digitalWrite(PTT_PIN, LOW); //PTT Key end to radio
+					digitalWrite(LED_TX, LOW);
+					digitalWrite(LED_RX, LOW);
 					dac_output_disable(DAC_CHANNEL_1);
 					dac_output_disable(DAC_CHANNEL_2);
 				}
 			}
 
 			//Start RX
-			if (firstRX) {
+			if (firstRX)
+			{
 				firstRX = false;
 				firstRxDisp = true;
 				timerAlarmEnable(timer);
-				if(SPEAKER_PIN==25)
+				if (SPEAKER_PIN == 25)
 					dac_output_enable(DAC_CHANNEL_1);
 				else
 					dac_output_enable(DAC_CHANNEL_2);
 				Serial.println("<Start RX From Ref.>");
-				pkgListUpdate((char*)srcCall.c_str(), 0);
-        digitalWrite(PTT_PIN,HIGH); //PTT Key talk to radio
+				pkgListUpdate((char *)srcCall.c_str(), 0);
+				digitalWrite(PTT_PIN, HIGH); //PTT Key talk to radio
+				digitalWrite(LED_TX, HIGH);
+				digitalWrite(LED_RX, LOW);
 			}
 
-
-		if (rxRef) {
-			idleTimeout = millis();
-      //Stop Vox in RX Mode.
-      vox=false;
-      voxtime=millis()+500;
-			if (firstRxDisp) {
-				firstRxDisp = false;				
-        info = "DstID: " + urCall;
-        info+="\nType: "+ rptr1;
-        info += "\nFrameID: " + String(frameid);
-        info += "\nStreamID: " + String(streamid);
-        Serial.println(info);        
-      }
+			if (rxRef)
+			{
+				idleTimeout = millis();
+				//Stop Vox in RX Mode.
+				vox = false;
+				voxtime = millis() + 500;
+				if (firstRxDisp)
+				{
+					firstRxDisp = false;
+					info = "DstID: " + urCall;
+					info += "\nType: " + rptr1;
+					info += "\nFrameID: " + String(frameid);
+					info += "\nStreamID: " + String(streamid);
+					Serial.println(info);
+				}
+			}
 		}
 	}
 }
 
-void taskDSP(void* pvParameters) {
+void taskDSP(void *pvParameters)
+{
 	Serial.println("Task DSP has been start");
-	for (;;) {
-		vTaskDelay(2 / portTICK_PERIOD_MS);
+	for (;;)
+	{
+		vTaskDelay(1 / portTICK_PERIOD_MS);
 		process_audio();
 	}
 }
 
 unsigned long int wifiTTL = 0;
-void taskNetwork(void* pvParameters) {
+void taskNetwork(void *pvParameters)
+{
 	int c = 0;
 	//chipid = ESP.getEfuseMac();
 	Serial.println("Task Network has been start");
-  if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) { //AP=false
+	if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX)
+	{ //AP=false
 		//WiFi.mode(config.wifi_mode);
-		if (config.wifi_mode == WIFI_AP_STA_FIX) {
+		if (config.wifi_mode == WIFI_AP_STA_FIX)
+		{
 			WiFi.mode(WIFI_AP_STA);
 		}
-		else if (config.wifi_mode == WIFI_AP_FIX) {
+		else if (config.wifi_mode == WIFI_AP_FIX)
+		{
 			WiFi.mode(WIFI_AP);
 		}
-    //กำหนดค่าการทำงานไวไฟเป็นแอสเซสพ้อย
-		WiFi.softAP(config.wifi_ap_ssid, config.wifi_ap_pass);  //Start HOTspot removing password will disable security
+		//กำหนดค่าการทำงานไวไฟเป็นแอสเซสพ้อย
+		WiFi.softAP(config.wifi_ap_ssid, config.wifi_ap_pass); //Start HOTspot removing password will disable security
 		WiFi.softAPConfig(local_IP, gateway, subnet);
 		Serial.print("Access point running. IP address: ");
 		Serial.print(WiFi.softAPIP());
 		Serial.println("");
 	}
-	else if (config.wifi_mode == WIFI_STA_FIX) {
+	else if (config.wifi_mode == WIFI_STA_FIX)
+	{
 		WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    delay(100);
-    Serial.println(F("WiFi Station Only mode."));
+		WiFi.disconnect();
+		delay(100);
+		Serial.println(F("WiFi Station Only mode."));
 	}
-	else {
+	else
+	{
 		WiFi.mode(WIFI_OFF);
-    WiFi.disconnect(true);
-    delay(100);
-    Serial.println(F("WiFi OFF All mode."));
+		WiFi.disconnect(true);
+		delay(100);
+		Serial.println(F("WiFi OFF All mode."));
 	}
 
 	webService();
- 
-	for (;;) {
-		vTaskDelay(10 / portTICK_PERIOD_MS);
+
+	for (;;)
+	{
+		vTaskDelay(1 / portTICK_PERIOD_MS);
 		//long now = millis();
 		//wdtNetworkTimer = now;
 
-		if ((config.wifi) && (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX)) {
-			if (WiFi.status() != WL_CONNECTED) {
+		if ((config.wifi) && (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX))
+		{
+			if (WiFi.status() != WL_CONNECTED)
+			{
 				unsigned long int tw = millis();
-				if (tw > wifiTTL) {
+				if (tw > wifiTTL)
+				{
 					wifiTTL = tw + 60000;
-          Serial.println(F("WiFi Connecting.."));
+					Serial.println(F("WiFi Connecting.."));
 					WiFi.disconnect();
 					WiFi.setHostname("M17Hotspot");
-          WiFi.setTxPower(WIFI_POWER_11dBm);
+					WiFi.setTxPower(WIFI_POWER_11dBm);
 					WiFi.begin(config.wifi_ssid, config.wifi_pass);
 					// Wait up to 1 minute for connection...
-					for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++) {
+					for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++)
+					{
 						Serial.write('.');
 						vTaskDelay(1000 / portTICK_PERIOD_MS);
-            rtc_wdt_feed();
+						rtc_wdt_feed();
 						//for (t = millis(); (millis() - t) < 1000; refresh());
 					}
 
-					if (c >= 30) { // If it didn't connect within 1 min
+					if (c >= 30)
+					{ // If it didn't connect within 1 min
 						Serial.println(F("Failed. Will retry..."));
 					}
-					else {		
+					else
+					{
 						beginM17();
 						m17ConectTimeout = millis() + 1000;
 #ifdef DEBUG
@@ -813,57 +1054,68 @@ void taskNetwork(void* pvParameters) {
 						Serial.print(F("Host IP address: "));
 						Serial.println(WiFi.localIP());
 						vTaskDelay(1000 / portTICK_PERIOD_MS);
-#endif			
-            Serial.println(F("### You can config by websevice ###"));
-            if(config.wifi_mode == WIFI_AP_STA){
-              Serial.print(F("WiFi AP URL: http://"));
-              Serial.println(local_IP);
-            }
-            Serial.print(F("WiFi STA URL: http://"));
-            Serial.println(WiFi.localIP());
+#endif
+						Serial.println(F("### You can config by websevice ###"));
+						if (config.wifi_mode == WIFI_AP_STA)
+						{
+							Serial.print(F("WiFi AP URL: http://"));
+							Serial.println(local_IP);
+						}
+						Serial.print(F("WiFi STA URL: http://"));
+						Serial.println(WiFi.localIP());
 					}
 				}
 			}
-			else {
+			else
+			{
 
-				if (connect_status == DISCONNECTED) {
-					if (millis() > (m17ConectTimeout + 10000)) {
-            Serial.println(F("M17 Connecting.."));
+				if (connect_status == DISCONNECTED)
+				{
+					if (millis() > (m17ConectTimeout + 10000))
+					{
+						Serial.println(F("M17 Connecting.."));
 						process_connect();
-            timerAlarmEnable(timer); //Start sample audio when M17 First Connected.
-					}else{
-            timerAlarmDisable(timer); //Stop sample audio when M17 Disconnect
-          }
+						timerAlarmEnable(timer); //Start sample audio when M17 First Connected.
+					}
+					else
+					{
+						timerAlarmDisable(timer); //Stop sample audio when M17 Disconnect
+					}
 				}
-				else {
-						readyReadM17();
-						transmitM17();
+				else
+				{
+					readyReadM17();
+					transmitM17();
 				}
 
-				if (millis() > NTP_Timeout) {
+				if (millis() > NTP_Timeout)
+				{
 					NTP_Timeout = millis() + 86400000;
 					//Serial.println(F("Config NTP"));
 					//setSyncProvider(getNtpTime);
 					configTime(3600 * timeZone, 0, "203.150.19.19", "0.pool.ntp.org", "1.pool.ntp.org");
 					//topBar(WiFi.RSSI());
 					vTaskDelay(3000 / portTICK_PERIOD_MS);
-          if(systemUptime==0) systemUptime = now();
+					if (systemUptime == 0)
+						systemUptime = now();
 					// struct tm tmstruct;
 					// getLocalTime(&tmstruct, 5000);
 				}
 
-				
-				if (millis() > pingTimeout) {
+				if (millis() > pingTimeout)
+				{
 					pingTimeout = millis() + 600000;
 #ifdef DEBUG
 					Serial.println("Ping Gateway to " + WiFi.gatewayIP().toString());
 #endif
-					if (ping_start(WiFi.gatewayIP(), 2, 0, 0, 5) == true) {
+					if (ping_start(WiFi.gatewayIP(), 2, 0, 0, 5) == true)
+					{
 #ifdef DEBUG
 						Serial.println(F("Ping Success!!"));
 #endif
 					}
-					else {
+					else
+					{
 #ifdef DEBUG
 						Serial.println(F("Ping Fail!"));
 #endif
@@ -872,6 +1124,6 @@ void taskNetwork(void* pvParameters) {
 					}
 				}
 			}
-		}//wifi config
-	}//Loop for
+		} //wifi config
+	}	  //Loop for
 }

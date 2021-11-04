@@ -1,30 +1,31 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.1"
+#define VERSION "0.2"
 
 #define DEBUG
 
 //#define SDCARD
+//#define OLED
 
-#define WIFI_OFF_FIX	0
-#define WIFI_AP_FIX		1
-#define WIFI_STA_FIX	2
-#define WIFI_AP_STA_FIX	3
+#define WIFI_OFF_FIX 0
+#define WIFI_AP_FIX 1
+#define WIFI_STA_FIX 2
+#define WIFI_AP_STA_FIX 3
 
-#define	IMPLEMENTATION	FIFO
+#define IMPLEMENTATION FIFO
 
-#define TZ              0       // (utc+) TZ in hours
-#define DST_MN          0      // use 60mn for summer time in some countries
-#define TZ_MN           ((TZ)*60)
-#define TZ_SEC          ((TZ)*3600)
-#define DST_SEC         ((DST_MN)*60)
+#define TZ 0	 // (utc+) TZ in hours
+#define DST_MN 0 // use 60mn for summer time in some countries
+#define TZ_MN ((TZ)*60)
+#define TZ_SEC ((TZ)*3600)
+#define DST_SEC ((DST_MN)*60)
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
 #define PKGLISTSIZE 10
 
-const int timeZone = 7;  // Bangkok
+const int timeZone = 7; // Bangkok
 
 #include <Arduino.h>
 #include <FS.h>
@@ -49,7 +50,8 @@ enum M17Flags
 	CONNECTED_RO = 1 << 6
 };
 
-typedef struct Config_Struct {
+typedef struct Config_Struct
+{
 	char id[20];
 	bool wifi_client;
 	char wifi_ssid[20];
@@ -81,17 +83,20 @@ typedef struct Config_Struct {
 	uint8_t mic;
 	uint8_t vox_delay;
 	uint8_t vox_level;
+	bool sql;
+	bool sql_active;
 	int codec2_mode;
-}Configuration;
+} Configuration;
 
-typedef struct pkgListStruct {
+typedef struct pkgListStruct
+{
 	time_t time;
 	char calsign[11];
 	char ssid[5];
 	unsigned int pkg;
 	bool type;
 	uint8_t symbol;
-}pkgListType;
+} pkgListType;
 
 void saveEEPROM();
 void defaultConfig();

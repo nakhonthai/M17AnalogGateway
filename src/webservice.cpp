@@ -6,6 +6,8 @@
 #include "webservice.h"
 #include "m17.h"
 
+extern hw_timer_t *timer;
+
 // Web Server;
 WebServer server(80);
 
@@ -15,77 +17,78 @@ bool defaultSetting = false;
 
 void serviceHandle()
 {
-    server.handleClient();
+	server.handleClient();
 }
 void setHTML(byte page)
 {
 	webString = "<html><head>\n";
 	webString += "<meta charset=\"utf-8\">";
 	webString += "<style>\nhdr1{background-color: powderblue;color: white;vertical-align: middle;text-align: center;font-size: 16px;font-weight: bold;}\n</style>\n";
-	if (page == 0) webString += "<meta http-equiv=\"refresh\" content=\"10;url=http://" + WiFi.localIP().toString() + "\"> \n";
+	if (page == 0)
+		webString += "<meta http-equiv=\"refresh\" content=\"10;url=http://" + WiFi.localIP().toString() + "\"> \n";
 	webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
 
 	webString += "<style>\n"
-		".topnav{"
-		"position:relative;"
-		"z-index:2;"
-		"font-size:25px;"
-		"background-color:#5f5f5f;"
-		"color:#f1f1f1;"
-		"width:100%;"
-		"padding:10px;"
-		"letter-spacing:3px;"
-		"box-shadow:0 10px 10px 0 rgba(0,0,0,0.16);"
-		"font-family:\"Segoe UI\",Tahoma,sans-serif;"
-		"}\n"
-		".title_hdr{"
-		"text-align: center;"
-		//"width: auto;"
-		"margin: 0 auto;"
-		"background: darkblue;"
-		"color: white;"
-		"font-size: 10px;"
-		"border-radius: 5px;"
-		"}\n"
-		".title_value{"
-		"width: auto;"
-		"margin: 0 auto;"
-		"text-align: center;"
-		"font-size: 14px;"
-		"color: darkgreen;"
-		"background: white;"
-		"border-radius: 5px;"
-		"}\n"
-		".L1{"
-		"text-align: center;"
-		"width: 33%;"
-		"margin: 1px;"
-		"background: red;"
-		"color: sandybrown;"
-		"font-size: 10px;"
-		"border-radius: 5px;"
-		"font-weight: bold;"
-		"}\n"
-		".L2{"
-		"text-align: center;"
-		"width: 33%;"
-		"margin: 1px;"
-		"background: yellow;"
-		"color: black;"
-		"font-size: 10px;"
-		"border-radius: 5px;"
-		"font-weight: bold;"
-		"}\n"
-		".L3{"
-		"text-align: center;"
-		"width: 33%;"
-		"margin: 1px;"
-		"background: blue;"
-		"color: lightgray;"
-		"font-size: 10px;"
-		"border-radius: 5px;"
-		"font-weight: bold;"
-		"}\n";
+				 ".topnav{"
+				 "position:relative;"
+				 "z-index:2;"
+				 "font-size:25px;"
+				 "background-color:#5f5f5f;"
+				 "color:#f1f1f1;"
+				 "width:100%;"
+				 "padding:10px;"
+				 "letter-spacing:3px;"
+				 "box-shadow:0 10px 10px 0 rgba(0,0,0,0.16);"
+				 "font-family:\"Segoe UI\",Tahoma,sans-serif;"
+				 "}\n"
+				 ".title_hdr{"
+				 "text-align: center;"
+				 //"width: auto;"
+				 "margin: 0 auto;"
+				 "background: darkblue;"
+				 "color: white;"
+				 "font-size: 10px;"
+				 "border-radius: 5px;"
+				 "}\n"
+				 ".title_value{"
+				 "width: auto;"
+				 "margin: 0 auto;"
+				 "text-align: center;"
+				 "font-size: 14px;"
+				 "color: darkgreen;"
+				 "background: white;"
+				 "border-radius: 5px;"
+				 "}\n"
+				 ".L1{"
+				 "text-align: center;"
+				 "width: 33%;"
+				 "margin: 1px;"
+				 "background: red;"
+				 "color: sandybrown;"
+				 "font-size: 10px;"
+				 "border-radius: 5px;"
+				 "font-weight: bold;"
+				 "}\n"
+				 ".L2{"
+				 "text-align: center;"
+				 "width: 33%;"
+				 "margin: 1px;"
+				 "background: yellow;"
+				 "color: black;"
+				 "font-size: 10px;"
+				 "border-radius: 5px;"
+				 "font-weight: bold;"
+				 "}\n"
+				 ".L3{"
+				 "text-align: center;"
+				 "width: 33%;"
+				 "margin: 1px;"
+				 "background: blue;"
+				 "color: lightgray;"
+				 "font-size: 10px;"
+				 "border-radius: 5px;"
+				 "font-weight: bold;"
+				 "}\n";
 	webString += F(".col-pad{width: 500px;}");
 	webString += F(".form-control{display:block;width:100%;height:34px;padding:6px 12px;font-size:14px;line-height:1.42857143;color:#555;background-color:#fff;background-image:none;border:1px solid #ccc;border-radius:4px;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075);-webkit-transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s;transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s}");
 	webString += F(".btn{display:inline-block;margin-bottom:0;font-weight:400;text-align:center;vertical-align:middle;cursor:pointer;background-image:none;border:1px solid transparent;white-space:nowrap;padding:6px 12px;font-size:14px;line-height:1.42857143;border-radius:4px;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.btn:focus,.btn:active:focus,.btn.active:focus{outline:thin dotted;outline:5px auto -webkit-focus-ring-color;outline-offset:-2px}.btn:hover,.btn:focus{color:#333;text-decoration:none}.btn:active,.btn.active{outline:0;background-image:none;-webkit-box-shadow:inset 0 3px 5px rgba(0,0,0,.125);box-shadow:inset 0 3px 5px rgba(0,0,0,.125)}.btn.disabled,.btn[disabled],fieldset[disabled] .btn{cursor:not-allowed;pointer-events:none;opacity:.65;filter:alpha(opacity=65);-webkit-box-shadow:none;box-shadow:none}.btn-default{color:#333;background-color:#fff;border-color:#ccc}.btn-default:hover,.btn-default:focus,.btn-default:active,.btn-default.active,.open .dropdown-toggle.btn-default{color:#333;background-color:#ebebeb;border-color:#adadad}.btn-default:active,.btn-default.active,.open .dropdown-toggle.btn-default{background-image:none}.btn-default.disabled,.btn-default[disabled],fieldset[disabled] .btn-default,.btn-default.disabled:hover,.btn-default[disabled]:hover,fieldset[disabled] .btn-default:hover,.btn-default.disabled:focus,.btn-default[disabled]:focus,fieldset[disabled] .btn-default:focus,.btn-default.disabled:active,.btn-default[disabled]:active,fieldset[disabled] .btn-default:active,.btn-default.disabled.active,.btn-default[disabled].active,fieldset[disabled] .btn-default.active{background-color:#fff;border-color:#ccc}.btn-default .badge{color:#fff;background-color:#333}");
@@ -99,12 +102,13 @@ void setHTML(byte page)
 	//webString += "<link rel=\"stylesheet\" href=\"//maxcdn.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css\" />\n";
 	webString += "</style>\n";
 
-	if (page == 0) {
+	if (page == 0)
+	{
 		///////////// google charts script
 		webString += "<script type=\"text/javascript\" src=\"https://www.gstatic.com/charts/loader.js\"></script> \n";
 		webString += "   <script type=\"text/javascript\"> \n";
 		webString += "    google.charts.load('current', {'packages':['corechart','gauge']}); \n";
-		
+
 		webString += "    google.charts.setOnLoadCallback(drawBatGauge); \n";
 		webString += "function drawBatGauge() { \n";
 		webString += "      var data = google.visualization.arrayToDataTable([ \n";
@@ -148,7 +152,7 @@ void setHTML(byte page)
 	else if (page == 0)
 		strActiveP1 = "class=active";
 	webString += "</head><body>\n";
-	webString += "<div class='w3-card-2 topnav notranslate' id='topnav'><b>M17 Analog Hotspot Gateway</div>\n";
+	webString += "<div class='w3-card-2 topnav notranslate' id='topnav'><b>M17 Analog Gateway</div>\n";
 	webString += "<div class=\"row\">\n";
 	webString += "<ul class=\"nav nav-tabs\" style=\"margin: 25px;\">\n";
 	webString += "<li role=\"presentation\"" + strActiveP1 + ">\n<a href=\"/\" id=\"channel_link_private_view\">Dash Board</a>\n</li>\n";
@@ -161,55 +165,62 @@ void setHTML(byte page)
 	webString += "<li role=\"presentation\"" + strActiveP6 + ">\n<a href=\"/firmware\" id=\"channel_link_firmware\">Firmware</a>\n</li>\n";
 	webString += "</ul>\n</div>";
 
-	if (page == 0) {
+	if (page == 0)
+	{
 		char strTime[30];
 		struct tm tmstruct;
 		tmstruct.tm_year = 0;
-        time_t tn=now()-systemUptime;
+		time_t tn = now() - systemUptime;
 		getLocalTime(&tmstruct, 5000);
 		sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d", (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
 
 		webString += "<table style=\"width:800px;\"><tr><td>";
 		webString += "<div style=\"width:300px\"><b>Last Readings at " + String(strTime) + "</b></div>\n";
-		
+
 		webString += "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) + "C</div> \n";
 		webString += "<div>Free Heap:" + String(ESP.getFreeHeap()) + " Byte</div> \n";
 		String uptime = String(hour(tn), DEC) + ":" + String(minute(tn), DEC) + ":" + String(second(tn), DEC);
 		webString += "<div>System Uptime: " + uptime + "</div> \n";
-		
+
 		webString += "</td></tr><tr><td>\n";
 
-        webString += "<table border=\"1\"><tr align=\"center\"><td class=\"hdr1\">WiFi Signal</td></tr>\n";
+		webString += "<table border=\"1\"><tr align=\"center\"><td class=\"hdr1\">WiFi Signal</td></tr>\n";
 		webString += "<tr align=\"center\"><td><div id=\"chart_divGaugeBat\" style=\"width: 250px;\"></div><br /><hr width=\"50%\"></td>\n";
 		webString += "</table>\n";
 
-        webString += "</td></tr><br /><tr align=\"left\"><td>\n";
+		webString += "</td></tr><br /><tr align=\"left\"><td>\n";
 
-        webString += "<table border=\"0\"><tr align=\"center\"><th style=\"background-color:#A0C0C0 ;width:30px\">#</th><th style=\"background-color:#F0A0F0 ;width:120px\">Callsign</th><th style=\"background-color:#F0F0A0 ;width:80px\">Last heard</th></tr>\n";
-        for (int i = 0; i < PKGLISTSIZE; i++) {
-            if ((int)pkgList[i].time > 0) {
-                webString +="<tr align=\"center\">";
-                webString +="<td class=\"hdr2\">"+String(i+1)+"</td>";
-                webString +="<td class=\"hdr2\">"+String(&pkgList[i].calsign[0])+"</td>";
-                String ltime = String(hour(pkgList[i].time), DEC) + ":" + String(minute(pkgList[i].time), DEC) + ":" + String(second(pkgList[i].time), DEC);
-                webString +="<td class=\"hdr2\">"+ltime+"</td>";
-                webString +="</tr>\n";
-            }
-        }
-        webString += "</table>\n";
+		webString += "<table border=\"0\"><tr align=\"center\"><th style=\"background-color:#A0C0C0 ;width:30px\">#</th><th style=\"background-color:#F0A0F0 ;width:120px\">Callsign</th><th style=\"background-color:#F0F0A0 ;width:80px\">Last heard</th></tr>\n";
+		for (int i = 0; i < PKGLISTSIZE; i++)
+		{
+			if ((int)pkgList[i].time > 0)
+			{
+				webString += "<tr align=\"center\">";
+				webString += "<td class=\"hdr2\">" + String(i + 1) + "</td>";
+				webString += "<td class=\"hdr2\">" + String(&pkgList[i].calsign[0]) + "</td>";
+				String ltime = String(hour(pkgList[i].time), DEC) + ":" + String(minute(pkgList[i].time), DEC) + ":" + String(second(pkgList[i].time), DEC);
+				webString += "<td class=\"hdr2\">" + ltime + "</td>";
+				webString += "</tr>\n";
+			}
+		}
+		webString += "</table>\n";
 		webString += "</td></tr></table><br/>\n";
 	}
-	else if (page == 1) {
+	else if (page == 1)
+	{
 		//webString += "PAGE 2</br>\n";
 	}
-	else if (page == 2) {
+	else if (page == 2)
+	{
 		//webString += "PAGE 3</br>\n";
-	}else if (page == 3) {
-        webString +="<script type=\"text/javascript\">\n";
-        webString +="function showVoxValue(newValue){\n";
-	    webString +="document.getElementById(\"voxShow\").innerHTML=newValue;\n";
-        webString +="}\n</script>\n";
-    }
+	}
+	else if (page == 3)
+	{
+		webString += "<script type=\"text/javascript\">\n";
+		webString += "function showVoxValue(newValue){\n";
+		webString += "document.getElementById(\"voxShow\").innerHTML=newValue;\n";
+		webString += "}\n</script>\n";
+	}
 	//webString += "</body></html>\n";
 }
 
@@ -217,23 +228,27 @@ void setHTML(byte page)
 // handler for web server request: http://IpAddress/      //
 ////////////////////////////////////////////////////////////
 
-void handle_root() 
+void handle_root()
 {
 	setHTML(0);
 	webString += "</body></html>\n";
-	server.send(200, "text/html", webString);            // send to someones browser when asked
+	server.send(200, "text/html", webString); // send to someones browser when asked
 	delay(100);
 	webString.clear();
 }
 
 #ifdef SDCARD
-void handle_storage() {
+void handle_storage()
+{
 	String dirname = "/";
 	char strTime[100];
 
-	if (server.args() > 0) {
-		for (uint8_t i = 0; i < server.args(); i++) {
-			if (server.argName(i) == "SD_INIT") {
+	if (server.args() > 0)
+	{
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
+			if (server.argName(i) == "SD_INIT")
+			{
 				//SD.end();
 				//if (!SD.begin(SDCARD_CS, spiSD, SDSPEED)) {
 				//	Serial.println("SD CARD Initialization failed!");
@@ -247,20 +262,26 @@ void handle_storage() {
 	uint8_t cardType = SD.cardType();
 
 	webString += "<b>SD CARD TYPE:</b> ";
-	if (cardType == CARD_NONE) {
+	if (cardType == CARD_NONE)
+	{
 		webString += "NOT FOUND\n";
 	}
-	else {
-		if (cardType == CARD_MMC) {
+	else
+	{
+		if (cardType == CARD_MMC)
+		{
 			webString += "MMC\n";
 		}
-		else if (cardType == CARD_SD) {
+		else if (cardType == CARD_SD)
+		{
 			webString += "SDSC\n";
 		}
-		else if (cardType == CARD_SDHC) {
+		else if (cardType == CARD_SDHC)
+		{
 			webString += "SDHC\n";
 		}
-		else {
+		else
+		{
 			webString += "UNKNOWN\n";
 		}
 		unsigned long cardSize = SD.cardSize() / (1024 * 1024);
@@ -268,30 +289,37 @@ void handle_storage() {
 		unsigned long cardUsed = SD.usedBytes() / (1024 * 1024);
 
 		webString += "</br>";
-		webString += "<b>SD Card Size: </b>"; webString += String((double)cardSize / 1000, 1) + "GB</br>\n";
-		webString += "<b>Total space: </b>"; webString += String((unsigned long)cardTotal) + "MB</br>\n";
-		webString += "<b>Used space: </b>"; webString += String((unsigned long)cardUsed) + "MB</br>\n";
+		webString += "<b>SD Card Size: </b>";
+		webString += String((double)cardSize / 1000, 1) + "GB</br>\n";
+		webString += "<b>Total space: </b>";
+		webString += String((unsigned long)cardTotal) + "MB</br>\n";
+		webString += "<b>Used space: </b>";
+		webString += String((unsigned long)cardUsed) + "MB</br>\n";
 
 		webString += "</br><br>Listing directory: </b>" + dirname + "</br>\n";
 
 		File root = SD.open(dirname);
-		if (!root) {
+		if (!root)
+		{
 			webString += "Failed to open directory\n";
 			//return;
 		}
-		if (!root.isDirectory()) {
+		if (!root.isDirectory())
+		{
 			webString += "Not a directory";
 			//return;
 		}
 
 		File file = root.openNextFile();
 		webString += "<table border=\"1\"><tr align=\"center\" bgcolor=\"#03DDFC\"><td><b>DIRECTORY</b></td><td width=\"150\"><b>FILE NAME</b></td><td width=\"100\"><b>SIZE(Byte)</b></td><td width=\"170\"><b>DATE TIME</b></td><td><b>DEL</b></td></tr>";
-		while (file) {
-			if (file.isDirectory()) {
+		while (file)
+		{
+			if (file.isDirectory())
+			{
 				//webString += "<tr><td>DIR : ");
 				webString += "<tr><td>" + String(file.name()) + "</td>";
 				time_t t = file.getLastWrite();
-				struct tm* tmstruct = localtime(&t);
+				struct tm *tmstruct = localtime(&t);
 				sprintf(strTime, "<td></td><td></td><td align=\"right\">%d-%02d-%02d %02d:%02d:%02d</td>", (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1, tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min, tmstruct->tm_sec);
 				webString += String(strTime);
 				//if (levels) {
@@ -299,7 +327,8 @@ void handle_storage() {
 				//}
 				webString += "<td></td></tr>\n";
 			}
-			else {
+			else
+			{
 				/*Serial.print("  FILE: ");
 				Serial.print(file.name());*/
 				String fName = String(file.name()).substring(1);
@@ -307,7 +336,7 @@ void handle_storage() {
 				//Serial.print("  SIZE: ");
 				webString += "<td align=\"right\">" + String(file.size()) + "</td>";
 				time_t t = file.getLastWrite();
-				struct tm* tmstruct = localtime(&t);
+				struct tm *tmstruct = localtime(&t);
 				sprintf(strTime, "<td align=\"right\">%d-%02d-%02d %02d:%02d:%02d</td>", (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1, tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min, tmstruct->tm_sec);
 				webString += String(strTime);
 				webString += "<td align=\"center\"><a href=\"/delete?FILE=" + fName + "\">X</a></td></tr>\n";
@@ -319,33 +348,43 @@ void handle_storage() {
 
 	webString += "</br><div><a href=\"/data?SD_INIT=OK\">[SD INIT]</a></div> \n";
 	webString += "</body></html>\n";
-	server.send(200, "text/html", webString);            // send to someones browser when asked
+	server.send(200, "text/html", webString); // send to someones browser when asked
 
 	delay(100);
 }
 
 #endif
 
-void handle_setting() {
+void handle_setting()
+{
 	bool wifiSTA = false;
 	bool wifiAP = false;
 
-	if (defaultSetting) {
-        disconnect_from_host(); //Restart M17 to Reflector
-        defaultConfig();
+	if (defaultSetting)
+	{
+		disconnect_from_host(); //Restart M17 to Reflector
+		defaultConfig();
 	}
-	else {
-		if (server.args() > 0) {
-            disconnect_from_host(); //Restart M17 to Reflector
-			for (uint8_t i = 0; i < server.args(); i++) {
+	else
+	{
+		if (server.args() > 0)
+		{
+			bool adcIsr = timerAlarmEnabled(timer);
+			if (adcIsr)
+				timerAlarmDisable(timer);
+			disconnect_from_host(); //Restart M17 to Reflector
+			for (uint8_t i = 0; i < server.args(); i++)
+			{
 				//Serial.print("SERVER ARGS ");
 				//Serial.print(server.argName(i));
 				//Serial.print("=");
 				//Serial.println(server.arg(i));
-				if (server.argName(i) == "wifiAP") {
+				if (server.argName(i) == "wifiAP")
+				{
 					if (server.arg(i) != "")
 					{
-						if (String(server.arg(i)) == "OK") {
+						if (String(server.arg(i)) == "OK")
+						{
 							wifiAP = true;
 							//if ((config.wifi_mode == WIFI_STA_FIX) || (config.wifi_mode == WIFI_AP_STA_FIX))
 							//	config.wifi_mode = WIFI_AP_STA_FIX;
@@ -354,10 +393,12 @@ void handle_setting() {
 						}
 					}
 				}
-				if (server.argName(i) == "wificlient") {
+				if (server.argName(i) == "wificlient")
+				{
 					if (server.arg(i) != "")
 					{
-						if (String(server.arg(i)) == "OK") {
+						if (String(server.arg(i)) == "OK")
+						{
 							wifiSTA = true;
 							//if ((config.wifi_mode == WIFI_AP_FIX)||(config.wifi_mode == WIFI_AP_STA_FIX))
 							//	config.wifi_mode = WIFI_AP_STA_FIX;
@@ -366,65 +407,77 @@ void handle_setting() {
 						}
 					}
 				}
-				
-				if (server.argName(i) == "gpsLat") {
+
+				if (server.argName(i) == "gpsLat")
+				{
 					if (server.arg(i) != "")
 					{
 						config.gps_lat = server.arg(i).toFloat();
 					}
 				}
-				if (server.argName(i) == "gpsLon") {
+				if (server.argName(i) == "gpsLon")
+				{
 					if (server.arg(i) != "")
 					{
 						config.gps_lon = server.arg(i).toFloat();
 					}
 				}
-				if (server.argName(i) == "gpsAlt") {
+				if (server.argName(i) == "gpsAlt")
+				{
 					if (server.arg(i) != "")
 					{
 						config.gps_alt = server.arg(i).toFloat();
 					}
 				}
-								
-				if (server.argName(i) == "wifi_ssidAP") {
+
+				if (server.argName(i) == "wifi_ssidAP")
+				{
 					if (server.arg(i) != "")
 					{
 						strcpy(config.wifi_ap_ssid, server.arg(i).c_str());
 					}
 				}
-				if (server.argName(i) == "wifi_passAP") {
+				if (server.argName(i) == "wifi_passAP")
+				{
 					if (server.arg(i) != "")
 					{
 						strcpy(config.wifi_ap_pass, server.arg(i).c_str());
 					}
 				}
-				if (server.argName(i) == "wifi_ssid") {
+				if (server.argName(i) == "wifi_ssid")
+				{
 					if (server.arg(i) != "")
 					{
 						strcpy(config.wifi_ssid, server.arg(i).c_str());
 					}
 				}
-				if (server.argName(i) == "wifi_pass") {
+				if (server.argName(i) == "wifi_pass")
+				{
 					if (server.arg(i) != "")
 					{
 						strcpy(config.wifi_pass, server.arg(i).c_str());
 					}
 				}
-				
 			}
-			if (wifiAP && wifiSTA) {
+			if (wifiAP && wifiSTA)
+			{
 				config.wifi_mode = WIFI_AP_STA_FIX;
 			}
-			else if (wifiAP) {
+			else if (wifiAP)
+			{
 				config.wifi_mode = WIFI_AP_FIX;
 			}
-			else if (wifiSTA) {
+			else if (wifiSTA)
+			{
 				config.wifi_mode = WIFI_STA_FIX;
 			}
-			else {
+			else
+			{
 				config.wifi_mode = WIFI_OFF_FIX;
 			}
 			saveEEPROM();
+			if (adcIsr)
+				timerAlarmEnable(timer);
 		}
 	}
 
@@ -451,12 +504,12 @@ void handle_setting() {
 
 	webString += "</div>\n<hr>\n"; //div general
 
-	
 	webString += "<div class = \"col-pad\">\n<h3>WiFi Network</h3>\n";
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi AP Enable</label>\n";
 	String wifiFlageAP = "";
-	if ((config.wifi_mode == WIFI_AP_STA_FIX) || (config.wifi_mode == WIFI_AP_FIX)) wifiFlageAP = "checked";
+	if ((config.wifi_mode == WIFI_AP_STA_FIX) || (config.wifi_mode == WIFI_AP_FIX))
+		wifiFlageAP = "checked";
 	webString += "<div class=\"col-sm-4 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_0\" name=\"wifiAP\" type=\"checkbox\" value=\"OK\" " + wifiFlageAP + "/></div>\n";
 	webString += "</div>\n";
 
@@ -473,7 +526,8 @@ void handle_setting() {
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi Client Enable</label>\n";
 	String wifiFlage = "";
-	if ((config.wifi_mode == WIFI_AP_STA_FIX) || (config.wifi_mode == WIFI_STA_FIX)) wifiFlage = "checked";
+	if ((config.wifi_mode == WIFI_AP_STA_FIX) || (config.wifi_mode == WIFI_STA_FIX))
+		wifiFlage = "checked";
 	webString += "<div class=\"col-sm-4 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_0\" name=\"wificlient\" type=\"checkbox\" value=\"OK\" " + wifiFlage + "/></div>\n";
 	webString += "</div>\n";
 
@@ -494,16 +548,20 @@ void handle_setting() {
 	webString += "<tr><td align=\"right\"><b>Mode:</b></td>\n";
 	webString += "<td align=\"left\">";
 
-	if (config.wifi_mode == WIFI_AP_FIX) {
+	if (config.wifi_mode == WIFI_AP_FIX)
+	{
 		webString += "AP";
 	}
-	else if (config.wifi_mode == WIFI_STA_FIX) {
+	else if (config.wifi_mode == WIFI_STA_FIX)
+	{
 		webString += "STA";
 	}
-	else if (config.wifi_mode == WIFI_AP_STA_FIX) {
+	else if (config.wifi_mode == WIFI_AP_STA_FIX)
+	{
 		webString += "AP+STA";
 	}
-	else {
+	else
+	{
 		webString += "OFF";
 	}
 
@@ -539,32 +597,40 @@ void handle_setting() {
 	webString += "</div>\n";
 
 	webString += "</body></html>\n";
-	server.send(200, "text/html", webString);            // send to someones browser when asked
-
+	server.send(200, "text/html", webString); // send to someones browser when asked
 }
 
-void handle_service() {
-	if (server.hasArg("commit")) {
-        disconnect_from_host(); //Restart M17 to Reflector
-		for (uint8_t i = 0; i < server.args(); i++) {
+void handle_service()
+{
+	if (server.hasArg("commit"))
+	{
+		bool adcIsr = timerAlarmEnabled(timer);
+		if (adcIsr)
+			timerAlarmDisable(timer);
+		disconnect_from_host(); //Restart M17 to Reflector
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
 			//Serial.print("SERVER ARGS ");
 			//Serial.print(server.argName(i));
 			//Serial.print("=");
 			//Serial.println(server.arg(i));
 
-			if (server.argName(i) == "m17Name") {
+			if (server.argName(i) == "m17Name")
+			{
 				if (server.arg(i) != "")
 				{
 					strcpy(config.reflector_name, server.arg(i).c_str());
 				}
 			}
-			if (server.argName(i) == "m17Host") {
+			if (server.argName(i) == "m17Host")
+			{
 				if (server.arg(i) != "")
 				{
 					strcpy(config.reflector_host, server.arg(i).c_str());
 				}
 			}
-			if (server.argName(i) == "m17Port") {
+			if (server.argName(i) == "m17Port")
+			{
 				if (server.arg(i) != "")
 				{
 					if (isValidNumber(server.arg(i)))
@@ -572,28 +638,60 @@ void handle_service() {
 				}
 			}
 
-			if (server.argName(i) == "m17Module") {
+			if (server.argName(i) == "m17Module")
+			{
 				if (server.arg(i) != "")
 				{
 					config.reflector_module = server.arg(i).charAt(0);
 				}
 			}
 
-			if (server.argName(i) == "myCallM17") {
+			if (server.argName(i) == "myCallM17")
+			{
 				if (server.arg(i) != "")
 				{
 					strcpy(config.mycall, server.arg(i).c_str());
 				}
 			}
 
-			if (server.argName(i) == "myModM17") {
+			if (server.argName(i) == "myModM17")
+			{
 				if (server.arg(i) != "")
 				{
 					config.mymodule = server.arg(i).charAt(0);
 				}
 			}
 
-            if (server.argName(i) == "vox_level") {
+			if (server.argName(i) == "sql")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+					{
+						if (server.arg(i).toInt())
+							config.sql = true;
+						else
+							config.sql = false;
+					}
+				}
+			}
+
+			if (server.argName(i) == "sql_active")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+					{
+						if (server.arg(i).toInt())
+							config.sql_active = true;
+						else
+							config.sql_active = false;
+					}
+				}
+			}
+
+			if (server.argName(i) == "vox_level")
+			{
 				if (server.arg(i) != "")
 				{
 					if (isValidNumber(server.arg(i)))
@@ -601,7 +699,8 @@ void handle_service() {
 				}
 			}
 
-            if (server.argName(i) == "vox_delay") {
+			if (server.argName(i) == "vox_delay")
+			{
 				if (server.arg(i) != "")
 				{
 					if (isValidNumber(server.arg(i)))
@@ -609,23 +708,25 @@ void handle_service() {
 				}
 			}
 
-            if (server.argName(i) == "codec2_mode") {
+			if (server.argName(i) == "codec2_mode")
+			{
 				if (server.arg(i) != "")
 				{
-					if (isValidNumber(server.arg(i))){
+					if (isValidNumber(server.arg(i)))
+					{
 						config.codec2_mode = server.arg(i).toInt();
-                        if(config.codec2_mode!=0)
-                            config.codec2_mode=2; //CODEC2_MODE_1600 1600bps
-                    }
+						if (config.codec2_mode != 0)
+							config.codec2_mode = 2; //CODEC2_MODE_1600 1600bps
+					}
 				}
-			}			
-		}        
-		saveEEPROM();	
-        //disconnect_from_host();	
+			}
+		}
+		saveEEPROM();
+		if (adcIsr)
+			timerAlarmDisable(timer);
 	}
 
-
-	setHTML(3);    
+	setHTML(3);
 	webString += "<div class=\"col-xs-10\">\n";
 	webString += "<form accept-charset=\"UTF-8\" action=\"/service\" class=\"form-horizontal\" id=\"setting_form\" method=\"post\">\n";
 
@@ -660,26 +761,57 @@ void handle_service() {
 	webString += "<div class=\"col-sm-1 col-xs-2\"><input class=\"form-control\" id=\"myModM17\" name=\"myModM17\" type=\"text\" value=\"" + String(config.mymodule) + "\" /></div>\n";
 	webString += "</div>\n";
 
-    webString += "<div class=\"form-group\">\n";
+	String cmSelSqlT = "";
+	String cmSelSqlF = "";
+	if (config.sql)
+	{
+		cmSelSqlT = "selected";
+	}
+	else
+	{
+		cmSelSqlF = "selected";
+	}
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Key PTT Mode</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"sql\" id=\"sql\">\n<option value=\"1\" " + cmSelSqlT + ">SQL Signal</option>\n<option value=\"0\" " + cmSelSqlF + ">VOX</option></select></div>\n";
+	webString += "</div>\n";
+
+	if (config.sql_active)
+	{
+		cmSelSqlT = "selected";
+	}
+	else
+	{
+		cmSelSqlF = "selected";
+	}
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">SQL Active</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"sql_active\" id=\"sql_active\">\n<option value=\"1\" " + cmSelSqlT + ">HIGH</option>\n<option value=\"0\" " + cmSelSqlF + ">LOW</option></select></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">VOX DELAY</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"vox_delay\" name=\"vox_delay\" min=\"1\" max=\"200\" value=\""+String(config.vox_delay)+"\" /></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"vox_delay\" name=\"vox_delay\" min=\"1\" max=\"200\" value=\"" + String(config.vox_delay) + "\" /></div>\n";
 	webString += "</div>\n";
 
-    webString += "<div class=\"form-group\">\n";
+	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">VOX Level</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"vox_level\" name=\"vox_level\" type=\"range\" min=\"0\" max=\"100\" value=\""+String(config.vox_level)+"\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">"+String(config.vox_level)+"</span></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"vox_level\" name=\"vox_level\" type=\"range\" min=\"0\" max=\"100\" value=\"" + String(config.vox_level) + "\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">" + String(config.vox_level) + "</span></div>\n";
 	webString += "</div>\n";
 
-    String cmSel3200="";
-    String cmSel1600="";
-    if(config.codec2_mode==0){
-        cmSel3200="selected";
-    }else{
-        cmSel1600="selected";
-    }
-    webString += "<div class=\"form-group\">\n";
+	String cmSel3200 = "";
+	String cmSel1600 = "";
+	if (config.codec2_mode == 0)
+	{
+		cmSel3200 = "selected";
+	}
+	else
+	{
+		cmSel1600 = "selected";
+	}
+	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Codec2 Mode</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"codec2_mode\" id=\"codec2_mode\">\n<option value=\"0\" "+cmSel3200+">CODEC2_3200</option>\n<option value=\"2\" "+cmSel1600+">CODEC2_1600</option></select></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"codec2_mode\" id=\"codec2_mode\">\n<option value=\"0\" " + cmSel3200 + ">CODEC2_3200</option>\n<option value=\"2\" " + cmSel1600 + ">CODEC2_1600</option></select></div>\n";
 	webString += "</div>\n";
 
 	webString += "</div>\n";
@@ -692,19 +824,23 @@ void handle_service() {
 	webString += "</form></div>\n";
 
 	webString += "</body></html>\n";
-	server.send(200, "text/html", webString);            // send to someones browser when asked
+	server.send(200, "text/html", webString); // send to someones browser when asked
 
 	delay(100);
 }
 
-void handle_system() {
-	if (server.hasArg("updateTimeNtp")) {
-		for (uint8_t i = 0; i < server.args(); i++) {
+void handle_system()
+{
+	if (server.hasArg("updateTimeNtp"))
+	{
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
 			//Serial.print("SERVER ARGS ");
 			//Serial.print(server.argName(i));
 			//Serial.print("=");
 			//Serial.println(server.arg(i));
-			if (server.argName(i) == "SetTimeNtp") {
+			if (server.argName(i) == "SetTimeNtp")
+			{
 				if (server.arg(i) != "")
 				{
 					Serial.println("WEB Config NTP");
@@ -714,13 +850,16 @@ void handle_system() {
 			}
 		}
 	}
-	else if (server.hasArg("updateTime")) {
-		for (uint8_t i = 0; i < server.args(); i++) {
+	else if (server.hasArg("updateTime"))
+	{
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
 			//Serial.print("SERVER ARGS ");
 			//Serial.print(server.argName(i));
 			//Serial.print("=");
 			//Serial.println(server.arg(i));
-			if (server.argName(i) == "SetTime") {
+			if (server.argName(i) == "SetTime")
+			{
 				if (server.arg(i) != "")
 				{
 					//struct tm tmn;
@@ -746,18 +885,24 @@ void handle_system() {
 					//tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec
 
 					time_t rtc = timeStamp - 25200;
-					timeval tv = { rtc, 0 };
-					timezone tz = { TZ_SEC + DST_MN, 0 };
+					timeval tv = {rtc, 0};
+					timezone tz = {TZ_SEC + DST_MN, 0};
 					settimeofday(&tv, &tz);
 
 					//Serial.println("Update TIME " + server.arg(i));
 					Serial.print("Set New Time at ");
-					Serial.print(dd); Serial.print("/");
-					Serial.print(mm); Serial.print("/");
-					Serial.print(yyyy); Serial.print(" ");
-					Serial.print(hh); Serial.print(":");
-					Serial.print(ii); Serial.print(":");
-					Serial.print(ss); Serial.print(" ");
+					Serial.print(dd);
+					Serial.print("/");
+					Serial.print(mm);
+					Serial.print("/");
+					Serial.print(yyyy);
+					Serial.print(" ");
+					Serial.print(hh);
+					Serial.print(":");
+					Serial.print(ii);
+					Serial.print(":");
+					Serial.print(ss);
+					Serial.print(" ");
 					Serial.println(timeStamp);
 				}
 				break;
@@ -810,16 +955,20 @@ void handle_system() {
 	webString += "<table border=\"0\" cellspacing=\"10\" cellpadding=\"10\">\n";
 	webString += "<tr><td align=\"right\"><b>Mode:</b></td>\n";
 	webString += "<td align=\"left\">";
-	if (config.wifi_mode == WIFI_AP_FIX) {
+	if (config.wifi_mode == WIFI_AP_FIX)
+	{
 		webString += "AP";
 	}
-	else if (config.wifi_mode == WIFI_STA_FIX) {
+	else if (config.wifi_mode == WIFI_STA_FIX)
+	{
 		webString += "STA";
 	}
-	else if (config.wifi_mode == WIFI_AP_STA_FIX) {
+	else if (config.wifi_mode == WIFI_AP_STA_FIX)
+	{
 		webString += "AP+STA";
 	}
-	else {
+	else
+	{
 		webString += "OFF";
 	}
 	webString += "</td></tr>\n";
@@ -842,19 +991,20 @@ void handle_system() {
 	webString += "</div><hr>\n";
 
 	webString += "<script type=\"text/javascript\">\n"
-		"$(function(){\n"
-		"$('#datetimepicker1').datetimepicker({\n"
-		"locale: moment.locale('th'),\n"
-		"format: 'YYYY-MM-DD HH:mm:ss'\n"
-		"});\n"
-		"});\n</script>\n";
+				 "$(function(){\n"
+				 "$('#datetimepicker1').datetimepicker({\n"
+				 "locale: moment.locale('th'),\n"
+				 "format: 'YYYY-MM-DD HH:mm:ss'\n"
+				 "});\n"
+				 "});\n</script>\n";
 	webString += "</body></html>\n";
-	server.send(200, "text/html", webString);            // send to someones browser when asked
+	server.send(200, "text/html", webString); // send to someones browser when asked
 
 	delay(100);
 }
 
-void handle_firmware() {
+void handle_firmware()
+{
 	char strCID[50];
 	uint64_t chipid = ESP.getEfuseMac();
 	sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
@@ -888,47 +1038,48 @@ void handle_firmware() {
 
 	webString += "</form></div>\n";
 	webString += "<script>"
-		"function sub(obj){"
-		"var fileName = obj.value.split('\\\\');"
-		"document.getElementById('file-input').innerHTML = '   '+ fileName[fileName.length-1];"
-		"};"
-		"$('form').submit(function(e){"
-		"e.preventDefault();"
-		"var form = $('#upload_form')[0];"
-		"var data = new FormData(form);"
-		"$.ajax({"
-		"url: '/update',"
-		"type: 'POST',"
-		"data: data,"
-		"contentType: false,"
-		"processData:false,"
-		"xhr: function() {"
-		"var xhr = new window.XMLHttpRequest();"
-		"xhr.upload.addEventListener('progress', function(evt) {"
-		"if (evt.lengthComputable) {"
-		"var per = evt.loaded / evt.total;"
-		"$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-		"$('#bar').css('width',Math.round(per*100) + '%');"
-		"}"
-		"}, false);"
-		"return xhr;"
-		"},"
-		"success:function(d, s) {"
-		"console.log('success!') "
-		"},"
-		"error: function (a, b, c) {"
-		"}"
-		"});"
-		"});"
-		"</script>";
+				 "function sub(obj){"
+				 "var fileName = obj.value.split('\\\\');"
+				 "document.getElementById('file-input').innerHTML = '   '+ fileName[fileName.length-1];"
+				 "};"
+				 "$('form').submit(function(e){"
+				 "e.preventDefault();"
+				 "var form = $('#upload_form')[0];"
+				 "var data = new FormData(form);"
+				 "$.ajax({"
+				 "url: '/update',"
+				 "type: 'POST',"
+				 "data: data,"
+				 "contentType: false,"
+				 "processData:false,"
+				 "xhr: function() {"
+				 "var xhr = new window.XMLHttpRequest();"
+				 "xhr.upload.addEventListener('progress', function(evt) {"
+				 "if (evt.lengthComputable) {"
+				 "var per = evt.loaded / evt.total;"
+				 "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+				 "$('#bar').css('width',Math.round(per*100) + '%');"
+				 "}"
+				 "}, false);"
+				 "return xhr;"
+				 "},"
+				 "success:function(d, s) {"
+				 "console.log('success!') "
+				 "},"
+				 "error: function (a, b, c) {"
+				 "}"
+				 "});"
+				 "});"
+				 "</script>";
 
 	webString += "</body></html>\n";
-	server.send(200, "text/html", webString);            // send to someones browser when asked
+	server.send(200, "text/html", webString); // send to someones browser when asked
 
 	delay(100);
 }
 
-void handle_default() {
+void handle_default()
+{
 	defaultSetting = true;
 	defaultConfig();
 	//webMessage = "";
@@ -937,47 +1088,74 @@ void handle_default() {
 }
 
 #ifdef SDCARD
-void handle_download() {
+void handle_download()
+{
 	String dataType = "text/plain";
 	String path;
-	if (server.args() > 0) {
-		for (uint8_t i = 0; i < server.args(); i++) {
-			if (server.argName(i) == "FILE") {
+	if (server.args() > 0)
+	{
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
+			if (server.argName(i) == "FILE")
+			{
 				path = server.arg(i);
 				break;
 			}
 		}
 	}
 
-	if (path.endsWith(".src")) path = path.substring(0, path.lastIndexOf("."));
-	else if (path.endsWith(".htm")) dataType = "text/html";
-	else if (path.endsWith(".csv")) dataType = "text/csv";
-	else if (path.endsWith(".css")) dataType = "text/css";
-	else if (path.endsWith(".xml")) dataType = "text/xml";
-	else if (path.endsWith(".png")) dataType = "image/png";
-	else if (path.endsWith(".gif")) dataType = "image/gif";
-	else if (path.endsWith(".jpg")) dataType = "image/jpeg";
-	else if (path.endsWith(".ico")) dataType = "image/x-icon";
-	else if (path.endsWith(".svg")) dataType = "image/svg+xml";
-	else if (path.endsWith(".ico")) dataType = "image/x-icon";
-	else if (path.endsWith(".js"))  dataType = "application/javascript";
-	else if (path.endsWith(".pdf")) dataType = "application/pdf";
-	else if (path.endsWith(".zip")) dataType = "application/zip";
-	else if (path.endsWith(".gz")) {
-		if (path.startsWith("/gz/htm")) dataType = "text/html";
-		else if (path.startsWith("/gz/css")) dataType = "text/css";
-		else if (path.startsWith("/gz/csv")) dataType = "text/csv";
-		else if (path.startsWith("/gz/xml")) dataType = "text/xml";
-		else if (path.startsWith("/gz/js"))  dataType = "application/javascript";
-		else if (path.startsWith("/gz/svg")) dataType = "image/svg+xml";
-		else dataType = "application/x-gzip";
+	if (path.endsWith(".src"))
+		path = path.substring(0, path.lastIndexOf("."));
+	else if (path.endsWith(".htm"))
+		dataType = "text/html";
+	else if (path.endsWith(".csv"))
+		dataType = "text/csv";
+	else if (path.endsWith(".css"))
+		dataType = "text/css";
+	else if (path.endsWith(".xml"))
+		dataType = "text/xml";
+	else if (path.endsWith(".png"))
+		dataType = "image/png";
+	else if (path.endsWith(".gif"))
+		dataType = "image/gif";
+	else if (path.endsWith(".jpg"))
+		dataType = "image/jpeg";
+	else if (path.endsWith(".ico"))
+		dataType = "image/x-icon";
+	else if (path.endsWith(".svg"))
+		dataType = "image/svg+xml";
+	else if (path.endsWith(".ico"))
+		dataType = "image/x-icon";
+	else if (path.endsWith(".js"))
+		dataType = "application/javascript";
+	else if (path.endsWith(".pdf"))
+		dataType = "application/pdf";
+	else if (path.endsWith(".zip"))
+		dataType = "application/zip";
+	else if (path.endsWith(".gz"))
+	{
+		if (path.startsWith("/gz/htm"))
+			dataType = "text/html";
+		else if (path.startsWith("/gz/css"))
+			dataType = "text/css";
+		else if (path.startsWith("/gz/csv"))
+			dataType = "text/csv";
+		else if (path.startsWith("/gz/xml"))
+			dataType = "text/xml";
+		else if (path.startsWith("/gz/js"))
+			dataType = "application/javascript";
+		else if (path.startsWith("/gz/svg"))
+			dataType = "image/svg+xml";
+		else
+			dataType = "application/x-gzip";
 	}
 	//webString = "<html><head>\n";
 	//webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
 	//webMessage += "</head><body>\n";
 	//webString += "</body></html>\n";
 	File myFile = SD.open("/" + path, "r");
-	if (myFile) {
+	if (myFile)
+	{
 		server.sendHeader("Content-Type", dataType);
 		server.sendHeader("Content-Disposition", "attachment; filename=" + path);
 		server.sendHeader("Connection", "close");
@@ -987,18 +1165,24 @@ void handle_download() {
 	delay(100);
 }
 
-void handle_delete() {
+void handle_delete()
+{
 	String dataType = "text/plain";
 	String path;
-	if (server.args() > 0) {
-		for (uint8_t i = 0; i < server.args(); i++) {
-			if (server.argName(i) == "FILE") {
+	if (server.args() > 0)
+	{
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
+			if (server.argName(i) == "FILE")
+			{
 				path = server.arg(i);
 				Serial.println("Deleting file: " + path);
-				if (SD.remove("/" + path)) {
+				if (SD.remove("/" + path))
+				{
 					Serial.println("File deleted");
 				}
-				else {
+				else
+				{
 					Serial.println("Delete failed");
 				}
 				break;
@@ -1009,38 +1193,45 @@ void handle_delete() {
 	handle_storage();
 }
 
-void listDir(fs::FS& fs, const char* dirname, uint8_t levels) {
+void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
+{
 	Serial.printf("Listing directory: %s\n", dirname);
 
 	File root = fs.open(dirname);
-	if (!root) {
+	if (!root)
+	{
 		Serial.println("Failed to open directory");
 		return;
 	}
-	if (!root.isDirectory()) {
+	if (!root.isDirectory())
+	{
 		Serial.println("Not a directory");
 		return;
 	}
 
 	File file = root.openNextFile();
-	while (file) {
-		if (file.isDirectory()) {
+	while (file)
+	{
+		if (file.isDirectory())
+		{
 			Serial.print("  DIR : ");
 			Serial.print(file.name());
 			time_t t = file.getLastWrite();
-			struct tm* tmstruct = localtime(&t);
+			struct tm *tmstruct = localtime(&t);
 			Serial.printf("  LAST WRITE: %d-%02d-%02d %02d:%02d:%02d\n", (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1, tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min, tmstruct->tm_sec);
-			if (levels) {
+			if (levels)
+			{
 				listDir(fs, file.name(), levels - 1);
 			}
 		}
-		else {
+		else
+		{
 			Serial.print("  FILE: ");
 			Serial.print(file.name());
 			Serial.print("  SIZE: ");
 			Serial.print(file.size());
 			time_t t = file.getLastWrite();
-			struct tm* tmstruct = localtime(&t);
+			struct tm *tmstruct = localtime(&t);
 			Serial.printf("  LAST WRITE: %d-%02d-%02d %02d:%02d:%02d\n", (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1, tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min, tmstruct->tm_sec);
 		}
 		file = root.openNextFile();
@@ -1048,55 +1239,69 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels) {
 }
 #endif
 
-void webService() {
+void webService()
+{
 	server.close();
 	// web client handlers
 	server.on("/", handle_root);
 	server.on("/config", handle_setting);
-    #ifdef SDCARD
+#ifdef SDCARD
 	server.on("/data", handle_storage);
 	server.on("/download", handle_download);
 	server.on("/delete", handle_delete);
-    #endif
+#endif
 	server.on("/default", handle_default);
 	server.on("/service", handle_service);
 	server.on("/system", handle_system);
 	server.on("/firmware", handle_firmware);
 	/*handling uploading firmware file */
-	server.on("/update", HTTP_POST, []() {
-		server.sendHeader("Connection", "close");
-		server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-		ESP.restart();
-		}, []() {
-			HTTPUpload& upload = server.upload();
-			if (upload.status == UPLOAD_FILE_START) {				
+	server.on(
+		"/update", HTTP_POST, []()
+		{
+			server.sendHeader("Connection", "close");
+			server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+			ESP.restart();
+		},
+		[]()
+		{
+			HTTPUpload &upload = server.upload();
+			if (upload.status == UPLOAD_FILE_START)
+			{
 				//Serial.printf("Firmware Update FILE: %s\n", upload.filename.c_str());
-				if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+				if (!Update.begin(UPDATE_SIZE_UNKNOWN))
+				{ //start with max available size
 					Update.printError(Serial);
 					delay(3);
 				}
-				else {
+				else
+				{
 					//wdtDisplayTimer = millis();
 					//wdtSensorTimer = millis();
 					vTaskSuspend(taskDSPHandle);
 					vTaskSuspend(taskUIHandle);
 					vTaskSuspend(taskNetworkHandle);
+					timerAlarmDisable(timer);
 					config.aprs = false;
 					delay(3);
 				}
 			}
-			else if (upload.status == UPLOAD_FILE_WRITE) {
+			else if (upload.status == UPLOAD_FILE_WRITE)
+			{
 				/* flashing firmware to ESP*/
-				if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+				if (Update.write(upload.buf, upload.currentSize) != upload.currentSize)
+				{
 					Update.printError(Serial);
 					delay(3);
 				}
 			}
-			else if (upload.status == UPLOAD_FILE_END) {
-				if (Update.end(true)) { //true to set the size to the current progress
+			else if (upload.status == UPLOAD_FILE_END)
+			{
+				if (Update.end(true))
+				{ //true to set the size to the current progress
 					delay(3);
 				}
-				else {
+				else
+				{
 					Update.printError(Serial);
 					delay(3);
 				}

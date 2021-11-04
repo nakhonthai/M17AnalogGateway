@@ -48,7 +48,7 @@
 
 #define V_REF 1100
 #define ADC1_CHANNEL (ADC1_CHANNEL_0) //GPIO 36 = MIC_PIN
-#define V_REF_TO_GPIO				  //Remove comment on define to route v_ref to GPIO
+//#define V_REF_TO_GPIO				  //Remove comment on define to route v_ref to GPIO
 
 #define AGC_FRAME_BYTES 320
 #define ADC_BUFFER_SIZE 320 //40ms of voice in 8KHz sampling frequency
@@ -189,7 +189,7 @@ void defaultConfig()
 	sprintf(config.reflector_host, "203.150.19.24");
 	sprintf(config.reflector_name, "M17-THA");
 	config.reflector_port = 17000;
-	config.reflector_module = 'C';
+	config.reflector_module = 'D';
 	sprintf(config.authUser, "admin");
 	sprintf(config.authPass, "admin");
 	sprintf(config.mycall, "mycall");
@@ -634,9 +634,6 @@ void setup()
 	}
 #endif
 
-	enableLoopWDT();
-	enableCore0WDT();
-	enableCore1WDT();
 	//esp_task_wdt_init(TWDT_TIMEOUT_S, false);
 
 	if (!EEPROM.begin(EEPROM_SIZE))
@@ -739,6 +736,11 @@ void setup()
 	codec2_set_lpc_post_filter(codec2_3200, 1, 0, 0.9, 0.3);
 	Serial.printf("Create CODEC2_3200 : nsam=%d ,nbit=%d ,nbyte=%d\n", nsam, nbit, nbyte);
 
+
+	enableLoopWDT();
+	enableCore0WDT();
+	enableCore1WDT();
+	
 	xTaskCreatePinnedToCore(
 		taskNetwork,		/* Function to implement the task */
 		"taskNetwork",		/* Name of the task */

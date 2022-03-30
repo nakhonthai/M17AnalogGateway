@@ -10,7 +10,7 @@
 //#define SDCARD
 #define OLED
 //#define SA818
-#define SR_FRS
+//#define SR_FRS
 
 #ifdef SR_FRS
 #ifndef SA818

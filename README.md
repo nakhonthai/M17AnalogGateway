@@ -113,9 +113,9 @@ for Handheld
 ## Howto Devellop
 -Pull and Compile by PlatformIO on the Visual Studio Code.
 
-## ESP32IGate firmware installation (do it first, next, update via web)
+## M17AG firmware installation (do it first, next, update via web)
 - 1.Connect the USB cable to the ESP32 Module.
-- 2.Download firmware and open the program ESP32 DOWNLOAD TOOL, set it in the firmware upload program, set the firmware to ESP32IGate_Vxx.bin, location 0x10000 and partitions.bin at 0x8000 and bootloader.bin at 0x1000 and boot.bin at 0xe000, if not loaded, connect GPIO0 cable to GND, press START button finished, press power button or reset (red) again.
+- 2.Download firmware and open the program ESP32 DOWNLOAD TOOL, set it in the firmware upload program, set the firmware to M17AG_xxx.bin, location 0x10000 and partitions.bin at 0x8000 and bootloader.bin at 0x1000 and boot.bin at 0xe000, if not loaded, connect GPIO0 cable to GND, press START button finished, press power button or reset (red) again.
 - 3.Then go to WiFi AP SSID: M17Analog and open a browser to the website. http://192.168.4.1 password: aprsthnetwork Can be fixed Or turn on your Wi-Fi router.
 - 4.Push BOOT button long >100ms to TX Position and >10Sec to Factory Default
 

@@ -5,6 +5,7 @@
 
 #include "webservice.h"
 #include "m17.h"
+#include "I2S.h"
 
 extern hw_timer_t *timer;
 
@@ -99,7 +100,7 @@ void setHTML(byte page)
 	webString += F(".nav{margin-bottom:0;padding-left:0;list-style:none}.nav>li{position:relative;display:block}.nav>li>a{position:relative;display:block;padding:10px 15px}.nav>li>a:hover,.nav>li>a:focus{text-decoration:none;background-color:#eee}.nav>li.disabled>a{color:#999}.nav>li.disabled>a:hover,.nav>li.disabled>a:focus{color:#999;text-decoration:none;background-color:transparent;cursor:not-allowed}.nav .open>a,.nav .open>a:hover,.nav .open>a:focus{background-color:#eee;border-color:#428bca}.nav .nav-divider{height:1px;margin:9px 0;overflow:hidden;background-color:#e5e5e5}.nav>li>a>img{max-width:none}.nav-tabs{border-bottom:1px solid #ddd}.nav-tabs>li{float:left;margin-bottom:-1px}.nav-tabs>li>a{margin-right:0px;line-height:1.42857143;border:1px solid #ddd;border-radius:10px 10px 0 0}.nav-tabs>li>a:hover{border-color:#eee #eee #ddd}.nav-tabs>li.active>a,.nav-tabs>li.active>a:hover,.nav-tabs>li.active>a:focus{color:#428bca;background-color:#e5e5e5;border:1px solid #ddd;border-bottom-color:transparent;cursor:default}.nav-tabs.nav-justified{width:100%;border-bottom:0}.nav-tabs.nav-justified>li{float:none}.nav-tabs.nav-justified>li>a{text-align:center;margin-bottom:5px}.nav-tabs.nav-justified>.dropdown .dropdown-menu{top:auto;left:auto}@media (min-width:768px){.nav-tabs.nav-justified>li{display:table-cell;width:1%}.nav-tabs.nav-justified>li>a{margin-bottom:0}}.nav-tabs.nav-justified>li>a{margin-right:0;border-radius:4px}.nav-tabs.nav-justified>.active>a,.nav-tabs.nav-justified>.active>a:hover,.nav-tabs.nav-justified>.active>a:focus{border:1px solid #ddd}@media (min-width:768px){.nav-tabs.nav-justified>li>a{border-bottom:1px solid #ddd;border-radius:4px 4px 0 0}.nav-tabs.nav-justified>.active>a,.nav-tabs.nav-justified>.active>a:hover,.nav-tabs.nav-justified>.active>a:focus{border-bottom-color:#fff}}.nav-pills>li{float:left}.nav-pills>li>a{border-radius:4px}.nav-pills>li+li{margin-left:2px}.nav-pills>li.active>a,.nav-pills>li.active>a:hover,.nav-pills>li.active>a:focus{color:#fff;background-color:#428bca}.nav-stacked>li{float:none}.nav-stacked>li+li{margin-top:2px;margin-left:0}.nav-justified{width:100%}.nav-justified>li{float:none}.nav-justified>li>a{text-align:center;margin-bottom:5px}.nav-justified>.dropdown .dropdown-menu{top:auto;left:auto}@media (min-width:768px){.nav-justified>li{display:table-cell;width:1%}.nav-justified>li>a{margin-bottom:0}}.nav-tabs-justified{border-bottom:0}.nav-tabs-justified>li>a{margin-right:0;border-radius:4px}.nav-tabs-justified>.active>a,.nav-tabs-justified>.active>a:hover,.nav-tabs-justified>.active>a:focus{border:1px solid #ddd}@media (min-width:768px){.nav-tabs-justified>li>a{border-bottom:1px solid #ddd;border-radius:4px 4px 0 0}.nav-tabs-justified>.active>a,.nav-tabs-justified>.active>a:hover,.nav-tabs-justified>.active>a:focus{border-bottom-color:#fff}}.tab-content>.tab-pane{display:none}.tab-content>.active{display:block}.nav-tabs .dropdown-menu{margin-top:-1px;border-top-right-radius:0;border-top-left-radius:0}");
 	webString += F(".form-group{margin-bottom:15px}.radio,.checkbox{display:block;min-height:20px;margin-top:10px;margin-bottom:10px;padding-left:20px}.radio label,.checkbox label{display:inline;font-weight:400;cursor:pointer}.radio input[type=radio],.radio-inline input[type=radio],.checkbox input[type=checkbox],.checkbox-inline input[type=checkbox]{float:left;margin-left:-20px}.radio+.radio,.checkbox+.checkbox{margin-top:-5px}.radio-inline,.checkbox-inline{display:inline-block;padding-left:20px;margin-bottom:0;vertical-align:middle;font-weight:400;cursor:pointer}.radio-inline+.radio-inline,.checkbox-inline+.checkbox-inline{margin-top:0;margin-left:10px}input[type=radio][disabled],input[type=checkbox][disabled],.radio[disabled],.radio-inline[disabled],.checkbox[disabled],.checkbox-inline[disabled],fieldset[disabled] input[type=radio],fieldset[disabled] input[type=checkbox],fieldset[disabled] .radio,fieldset[disabled] .radio-inline,fieldset[disabled] .checkbox,fieldset[disabled] .checkbox-inline{cursor:not-allowed}.input-sm{height:30px;padding:5px 10px;font-size:12px;line-height:1.5;border-radius:3px}select.input-sm{height:30px;line-height:30px}textarea.input-sm,select[multiple].input-sm{height:auto}.input-lg{height:46px;padding:10px 16px;font-size:18px;line-height:1.33;border-radius:6px}select.input-lg{height:46px;line-height:46px}textarea.input-lg,select[multiple].input-lg{height:auto}.has-feedback{position:relative}.has-feedback .form-control{padding-right:42.5px}.has-feedback .form-control-feedback{position:absolute;top:25px;right:0;display:block;width:34px;height:34px;line-height:34px;text-align:center}.has-success .help-block,.has-success .control-label,.has-success .radio,.has-success .checkbox,.has-success .radio-inline,.has-success .checkbox-inline{color:#3c763d}.has-success .form-control{border-color:#3c763d;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075)}.has-success .form-control:focus{border-color:#2b542c;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075),0 0 6px #67b168;box-shadow:inset 0 1px 1px rgba(0,0,0,.075),0 0 6px #67b168}.has-success .input-group-addon{color:#3c763d;border-color:#3c763d;background-color:#dff0d8}.has-success .form-control-feedback{color:#3c763d}.has-warning .help-block,.has-warning .control-label,.has-warning .radio,.has-warning .checkbox,.has-warning .radio-inline,.has-warning .checkbox-inline{color:#8a6d3b}.has-warning .form-control{border-color:#8a6d3b;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075)}.has-warning .form-control:focus{border-color:#66512c;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075),0 0 6px #c0a16b;box-shadow:inset 0 1px 1px rgba(0,0,0,.075),0 0 6px #c0a16b}.has-warning .input-group-addon{color:#8a6d3b;border-color:#8a6d3b;background-color:#fcf8e3}.has-warning .form-control-feedback{color:#8a6d3b}.has-error .help-block,.has-error .control-label,.has-error .radio,.has-error .checkbox,.has-error .radio-inline,.has-error .checkbox-inline{color:#a94442}.has-error .form-control{border-color:#a94442;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075)}.has-error .form-control:focus{border-color:#843534;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075),0 0 6px #ce8483;box-shadow:inset 0 1px 1px rgba(0,0,0,.075),0 0 6px #ce8483}.has-error .input-group-addon{color:#a94442;border-color:#a94442;background-color:#f2dede}.has-error .form-control-feedback{color:#a94442}.form-control-static{margin-bottom:0}.help-block{display:block;margin-top:5px;margin-bottom:10px;color:#737373}@media (min-width:768px){.form-inline .form-group{display:inline-block;margin-bottom:0;vertical-align:middle}.form-inline .form-control{display:inline-block;width:auto;vertical-align:middle}.form-inline .input-group>.form-control{width:100%}.form-inline .control-label{margin-bottom:0;vertical-align:middle}.form-inline .radio,.form-inline .checkbox{display:inline-block;margin-top:0;margin-bottom:0;padding-left:0;vertical-align:middle}.form-inline .radio input[type=radio],.form-inline .checkbox input[type=checkbox]{float:none;margin-left:0}.form-inline .has-feedback .form-control-feedback{top:0}}.form-horizontal .control-label,.form-horizontal .radio,.form-horizontal .checkbox,.form-horizontal .radio-inline,.form-horizontal .checkbox-inline{margin-top:0;margin-bottom:0;padding-top:0px}.form-horizontal .radio,.form-horizontal .checkbox{min-height:27px}.form-horizontal .form-group{margin-left:-15px;margin-right:-15px}.form-horizontal .form-control-static{padding-top:7px}@media (min-width:768px){.form-horizontal .control-label{text-align:right}}.form-horizontal .has-feedback .form-control-feedback{top:0;right:15px}");
 	webString += F(".col-xs-1,.col-sm-1,.col-md-1,.col-lg-1,.col-xs-2,.col-sm-2,.col-md-2,.col-lg-2,.col-xs-3,.col-sm-3,.col-md-3,.col-lg-3,.col-xs-4,.col-sm-4,.col-md-4,.col-lg-4,.col-xs-5,.col-sm-5,.col-md-5,.col-lg-5,.col-xs-6,.col-sm-6,.col-md-6,.col-lg-6,.col-xs-7,.col-sm-7,.col-md-7,.col-lg-7,.col-xs-8,.col-sm-8,.col-md-8,.col-lg-8,.col-xs-9,.col-sm-9,.col-md-9,.col-lg-9,.col-xs-10,.col-sm-10,.col-md-10,.col-lg-10,.col-xs-11,.col-sm-11,.col-md-11,.col-lg-11,.col-xs-12,.col-sm-12,.col-md-12,.col-lg-12{position:relative;min-height:1px;padding-left:15px;padding-right:15px}.col-xs-1,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9,.col-xs-10,.col-xs-11,.col-xs-12{float:left}.col-xs-12{width:100%}.col-xs-11{width:91.66666667%}.col-xs-10{width:83.33333333%}.col-xs-9{width:75%}.col-xs-8{width:66.66666667%}.col-xs-7{width:58.33333333%}.col-xs-6{width:50%}.col-xs-5{width:41.66666667%}.col-xs-4{width:33.33333333%}.col-xs-3{width:25%}.col-xs-2{width:16.66666667%}.col-xs-1{width:8.33333333%}.col-xs-pull-12{right:100%}.col-xs-pull-11{right:91.66666667%}.col-xs-pull-10{right:83.33333333%}.col-xs-pull-9{right:75%}.col-xs-pull-8{right:66.66666667%}.col-xs-pull-7{right:58.33333333%}.col-xs-pull-6{right:50%}.col-xs-pull-5{right:41.66666667%}.col-xs-pull-4{right:33.33333333%}.col-xs-pull-3{right:25%}.col-xs-pull-2{right:16.66666667%}.col-xs-pull-1{right:8.33333333%}.col-xs-pull-0{right:0}.col-xs-push-12{left:100%}.col-xs-push-11{left:91.66666667%}.col-xs-push-10{left:83.33333333%}.col-xs-push-9{left:75%}.col-xs-push-8{left:66.66666667%}.col-xs-push-7{left:58.33333333%}.col-xs-push-6{left:50%}.col-xs-push-5{left:41.66666667%}.col-xs-push-4{left:33.33333333%}.col-xs-push-3{left:25%}.col-xs-push-2{left:16.66666667%}.col-xs-push-1{left:8.33333333%}.col-xs-push-0{left:0}.col-xs-offset-12{margin-left:100%}.col-xs-offset-11{margin-left:91.66666667%}.col-xs-offset-10{margin-left:83.33333333%}.col-xs-offset-9{margin-left:75%}.col-xs-offset-8{margin-left:66.66666667%}.col-xs-offset-7{margin-left:58.33333333%}.col-xs-offset-6{margin-left:50%}.col-xs-offset-5{margin-left:41.66666667%}.col-xs-offset-4{margin-left:33.33333333%}.col-xs-offset-3{margin-left:25%}.col-xs-offset-2{margin-left:16.66666667%}.col-xs-offset-1{margin-left:8.33333333%}.col-xs-offset-0{margin-left:0}@media (min-width:768px){.col-sm-1,.col-sm-2,.col-sm-3,.col-sm-4,.col-sm-5,.col-sm-6,.col-sm-7,.col-sm-8,.col-sm-9,.col-sm-10,.col-sm-11,.col-sm-12{float:left}.col-sm-12{width:100%}.col-sm-11{width:91.66666667%}.col-sm-10{width:83.33333333%}.col-sm-9{width:75%}.col-sm-8{width:66.66666667%}.col-sm-7{width:58.33333333%}.col-sm-6{width:50%}.col-sm-5{width:41.66666667%}.col-sm-4{width:33.33333333%}.col-sm-3{width:25%}.col-sm-2{width:16.66666667%}.col-sm-1{width:8.33333333%}.col-sm-pull-12{right:100%}.col-sm-pull-11{right:91.66666667%}.col-sm-pull-10{right:83.33333333%}.col-sm-pull-9{right:75%}.col-sm-pull-8{right:66.66666667%}.col-sm-pull-7{right:58.33333333%}.col-sm-pull-6{right:50%}.col-sm-pull-5{right:41.66666667%}.col-sm-pull-4{right:33.33333333%}.col-sm-pull-3{right:25%}.col-sm-pull-2{right:16.66666667%}.col-sm-pull-1{right:8.33333333%}.col-sm-pull-0{right:0}.col-sm-push-12{left:100%}.col-sm-push-11{left:91.66666667%}.col-sm-push-10{left:83.33333333%}.col-sm-push-9{left:75%}.col-sm-push-8{left:66.66666667%}.col-sm-push-7{left:58.33333333%}.col-sm-push-6{left:50%}.col-sm-push-5{left:41.66666667%}.col-sm-push-4{left:33.33333333%}.col-sm-push-3{left:25%}.col-sm-push-2{left:16.66666667%}.col-sm-push-1{left:8.33333333%}.col-sm-push-0{left:0}.col-sm-offset-12{margin-left:100%}.col-sm-offset-11{margin-left:91.66666667%}.col-sm-offset-10{margin-left:83.33333333%}.col-sm-offset-9{margin-left:75%}.col-sm-offset-8{margin-left:66.66666667%}.col-sm-offset-7{margin-left:58.33333333%}.col-sm-offset-6{margin-left:50%}.col-sm-offset-5{margin-left:41.66666667%}.col-sm-offset-4{margin-left:33.33333333%}.col-sm-offset-3{margin-left:25%}.col-sm-offset-2{margin-left:16.66666667%}.col-sm-offset-1{margin-left:8.33333333%}.col-sm-offset-0{margin-left:0}}@media (min-width:992px){.col-md-1,.col-md-2,.col-md-3,.col-md-4,.col-md-5,.col-md-6,.col-md-7,.col-md-8,.col-md-9,.col-md-10,.col-md-11,.col-md-12{float:left}.col-md-12{width:100%}.col-md-11{width:91.66666667%}.col-md-10{width:83.33333333%}.col-md-9{width:75%}.col-md-8{width:66.66666667%}.col-md-7{width:58.33333333%}.col-md-6{width:50%}.col-md-5{width:41.66666667%}.col-md-4{width:33.33333333%}.col-md-3{width:25%}.col-md-2{width:16.66666667%}.col-md-1{width:8.33333333%}.col-md-pull-12{right:100%}.col-md-pull-11{right:91.66666667%}.col-md-pull-10{right:83.33333333%}.col-md-pull-9{right:75%}.col-md-pull-8{right:66.66666667%}.col-md-pull-7{right:58.33333333%}.col-md-pull-6{right:50%}.col-md-pull-5{right:41.66666667%}.col-md-pull-4{right:33.33333333%}.col-md-pull-3{right:25%}.col-md-pull-2{right:16.66666667%}.col-md-pull-1{right:8.33333333%}.col-md-pull-0{right:0}.col-md-push-12{left:100%}.col-md-push-11{left:91.66666667%}.col-md-push-10{left:83.33333333%}.col-md-push-9{left:75%}.col-md-push-8{left:66.66666667%}.col-md-push-7{left:58.33333333%}.col-md-push-6{left:50%}.col-md-push-5{left:41.66666667%}.col-md-push-4{left:33.33333333%}.col-md-push-3{left:25%}.col-md-push-2{left:16.66666667%}.col-md-push-1{left:8.33333333%}.col-md-push-0{left:0}.col-md-offset-12{margin-left:100%}.col-md-offset-11{margin-left:91.66666667%}.col-md-offset-10{margin-left:83.33333333%}.col-md-offset-9{margin-left:75%}.col-md-offset-8{margin-left:66.66666667%}.col-md-offset-7{margin-left:58.33333333%}.col-md-offset-6{margin-left:50%}.col-md-offset-5{margin-left:41.66666667%}.col-md-offset-4{margin-left:33.33333333%}.col-md-offset-3{margin-left:25%}.col-md-offset-2{margin-left:16.66666667%}.col-md-offset-1{margin-left:8.33333333%}.col-md-offset-0{margin-left:0}}@media (min-width:1200px){.col-lg-1,.col-lg-2,.col-lg-3,.col-lg-4,.col-lg-5,.col-lg-6,.col-lg-7,.col-lg-8,.col-lg-9,.col-lg-10,.col-lg-11,.col-lg-12{float:left}.col-lg-12{width:100%}.col-lg-11{width:91.66666667%}.col-lg-10{width:83.33333333%}.col-lg-9{width:75%}.col-lg-8{width:66.66666667%}.col-lg-7{width:58.33333333%}.col-lg-6{width:50%}.col-lg-5{width:41.66666667%}.col-lg-4{width:33.33333333%}.col-lg-3{width:25%}.col-lg-2{width:16.66666667%}.col-lg-1{width:8.33333333%}.col-lg-pull-12{right:100%}.col-lg-pull-11{right:91.66666667%}.col-lg-pull-10{right:83.33333333%}.col-lg-pull-9{right:75%}.col-lg-pull-8{right:66.66666667%}.col-lg-pull-7{right:58.33333333%}.col-lg-pull-6{right:50%}.col-lg-pull-5{right:41.66666667%}.col-lg-pull-4{right:33.33333333%}.col-lg-pull-3{right:25%}.col-lg-pull-2{right:16.66666667%}.col-lg-pull-1{right:8.33333333%}.col-lg-pull-0{right:0}.col-lg-push-12{left:100%}.col-lg-push-11{left:91.66666667%}.col-lg-push-10{left:83.33333333%}.col-lg-push-9{left:75%}.col-lg-push-8{left:66.66666667%}.col-lg-push-7{left:58.33333333%}.col-lg-push-6{left:50%}.col-lg-push-5{left:41.66666667%}.col-lg-push-4{left:33.33333333%}.col-lg-push-3{left:25%}.col-lg-push-2{left:16.66666667%}.col-lg-push-1{left:8.33333333%}.col-lg-push-0{left:0}.col-lg-offset-12{margin-left:100%}.col-lg-offset-11{margin-left:91.66666667%}.col-lg-offset-10{margin-left:83.33333333%}.col-lg-offset-9{margin-left:75%}.col-lg-offset-8{margin-left:66.66666667%}.col-lg-offset-7{margin-left:58.33333333%}.col-lg-offset-6{margin-left:50%}.col-lg-offset-5{margin-left:41.66666667%}.col-lg-offset-4{margin-left:33.33333333%}.col-lg-offset-3{margin-left:25%}.col-lg-offset-2{margin-left:16.66666667%}.col-lg-offset-1{margin-left:8.33333333%}.col-lg-offset-0{margin-left:0}}");
-	//webString += "<link rel=\"stylesheet\" href=\"//maxcdn.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css\" />\n";
+	// webString += "<link rel=\"stylesheet\" href=\"//maxcdn.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css\" />\n";
 	webString += "</style>\n";
 
 	if (page == 0)
@@ -139,7 +140,10 @@ void setHTML(byte page)
 	String strActiveP4 = "";
 	String strActiveP5 = "";
 	String strActiveP6 = "";
-	if (page == 5)
+	String strActiveP7 = "";
+	if (page == 6)
+		strActiveP7 = "class=active";
+	else if (page == 5)
 		strActiveP6 = "class=active";
 	else if (page == 4)
 		strActiveP5 = "class=active";
@@ -160,6 +164,9 @@ void setHTML(byte page)
 	webString += "<li role=\"presentation\"" + strActiveP2 + ">\n<a href=\"/data\" id=\"channel_link_api_keys\">Storage</a>\n</li>\n";
 #endif
 	webString += "<li role=\"presentation\"" + strActiveP3 + ">\n<a href=\"/config\" id=\"channel_link_settings\">Setting</a>\n</li>\n";
+#ifdef SA818
+	webString += "<li role=\"presentation\"" + strActiveP7 + ">\n<a href=\"/radio\" id=\"channel_link_radio\">Radio</a>\n</li>\n";
+#endif
 	webString += "<li role=\"presentation\"" + strActiveP4 + ">\n<a href=\"/service\" id=\"channel_link_service\">Service</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP5 + ">\n<a href=\"/system\" id=\"channel_link_system\">System</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP6 + ">\n<a href=\"/firmware\" id=\"channel_link_firmware\">Firmware</a>\n</li>\n";
@@ -191,6 +198,7 @@ void setHTML(byte page)
 		webString += "</td></tr><br /><tr align=\"left\"><td>\n";
 
 		webString += "<table border=\"0\"><tr align=\"center\"><th style=\"background-color:#A0C0C0 ;width:30px\">#</th><th style=\"background-color:#F0A0F0 ;width:120px\">Callsign</th><th style=\"background-color:#F0F0A0 ;width:80px\">Last heard</th></tr>\n";
+
 		for (int i = 0; i < PKGLISTSIZE; i++)
 		{
 			if ((int)pkgList[i].time > 0)
@@ -198,7 +206,10 @@ void setHTML(byte page)
 				webString += "<tr align=\"center\">";
 				webString += "<td class=\"hdr2\">" + String(i + 1) + "</td>";
 				webString += "<td class=\"hdr2\">" + String(&pkgList[i].calsign[0]) + "</td>";
-				String ltime = String(hour(pkgList[i].time), DEC) + ":" + String(minute(pkgList[i].time), DEC) + ":" + String(second(pkgList[i].time), DEC);
+				time_t tm = pkgList[i].time;
+				localtime_r(&pkgList[i].time, &tmstruct);
+				String ltime = String(tmstruct.tm_hour, DEC) + ":" + String(tmstruct.tm_min, DEC) + ":" + String(tmstruct.tm_sec, DEC);
+				// String ltime = String(hour(pkgList[i].time), DEC) + ":" + String(minute(pkgList[i].time), DEC) + ":" + String(second(pkgList[i].time), DEC);
 				webString += "<td class=\"hdr2\">" + ltime + "</td>";
 				webString += "</tr>\n";
 			}
@@ -208,20 +219,22 @@ void setHTML(byte page)
 	}
 	else if (page == 1)
 	{
-		//webString += "PAGE 2</br>\n";
+		// webString += "PAGE 2</br>\n";
 	}
 	else if (page == 2)
 	{
-		//webString += "PAGE 3</br>\n";
+		// webString += "PAGE 3</br>\n";
 	}
 	else if (page == 3)
 	{
 		webString += "<script type=\"text/javascript\">\n";
 		webString += "function showVoxValue(newValue){\n";
-		webString += "document.getElementById(\"voxShow\").innerHTML=newValue;\n";
-		webString += "}\n</script>\n";
+		webString += "document.getElementById(\"voxShow\").innerHTML=newValue;}\n";
+		webString += "function showMicValue(newValue){\n";
+		webString += "document.getElementById(\"micShow\").innerHTML=newValue;}\n";
+		webString += "</script>\n";
 	}
-	//webString += "</body></html>\n";
+	// webString += "</body></html>\n";
 }
 
 ////////////////////////////////////////////////////////////
@@ -249,11 +262,11 @@ void handle_storage()
 		{
 			if (server.argName(i) == "SD_INIT")
 			{
-				//SD.end();
-				//if (!SD.begin(SDCARD_CS, spiSD, SDSPEED)) {
+				// SD.end();
+				// if (!SD.begin(SDCARD_CS, spiSD, SDSPEED)) {
 				//	Serial.println("SD CARD Initialization failed!");
 				//	//return;
-				//}
+				// }
 			}
 		}
 	}
@@ -302,12 +315,12 @@ void handle_storage()
 		if (!root)
 		{
 			webString += "Failed to open directory\n";
-			//return;
+			// return;
 		}
 		if (!root.isDirectory())
 		{
 			webString += "Not a directory";
-			//return;
+			// return;
 		}
 
 		File file = root.openNextFile();
@@ -316,15 +329,15 @@ void handle_storage()
 		{
 			if (file.isDirectory())
 			{
-				//webString += "<tr><td>DIR : ");
+				// webString += "<tr><td>DIR : ");
 				webString += "<tr><td>" + String(file.name()) + "</td>";
 				time_t t = file.getLastWrite();
 				struct tm *tmstruct = localtime(&t);
 				sprintf(strTime, "<td></td><td></td><td align=\"right\">%d-%02d-%02d %02d:%02d:%02d</td>", (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1, tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min, tmstruct->tm_sec);
 				webString += String(strTime);
-				//if (levels) {
+				// if (levels) {
 				//	listDir(fs, file.name(), levels - 1);
-				//}
+				// }
 				webString += "<td></td></tr>\n";
 			}
 			else
@@ -333,7 +346,7 @@ void handle_storage()
 				Serial.print(file.name());*/
 				String fName = String(file.name()).substring(1);
 				webString += "<tr><td>/</td><td align=\"right\"><a href=\"/download?FILE=" + fName + "\" target=\"_blank\">" + fName + "</a></td>";
-				//Serial.print("  SIZE: ");
+				// Serial.print("  SIZE: ");
 				webString += "<td align=\"right\">" + String(file.size()) + "</td>";
 				time_t t = file.getLastWrite();
 				struct tm *tmstruct = localtime(&t);
@@ -362,23 +375,25 @@ void handle_setting()
 
 	if (defaultSetting)
 	{
-		disconnect_from_host(); //Restart M17 to Reflector
+		disconnect_from_host(); // Restart M17 to Reflector
 		defaultConfig();
 	}
 	else
 	{
 		if (server.args() > 0)
 		{
-			bool adcIsr = timerAlarmEnabled(timer);
-			if (adcIsr)
-				timerAlarmDisable(timer);
-			disconnect_from_host(); //Restart M17 to Reflector
+			// #ifndef I2S_INTERNAL
+			// 			bool adcIsr = timerAlarmEnabled(timer);
+			// 			if (adcIsr)
+			// 				timerAlarmDisable(timer);
+			// #endif
+			disconnect_from_host(); // Restart M17 to Reflector
 			for (uint8_t i = 0; i < server.args(); i++)
 			{
-				//Serial.print("SERVER ARGS ");
-				//Serial.print(server.argName(i));
-				//Serial.print("=");
-				//Serial.println(server.arg(i));
+				// Serial.print("SERVER ARGS ");
+				// Serial.print(server.argName(i));
+				// Serial.print("=");
+				// Serial.println(server.arg(i));
 				if (server.argName(i) == "wifiAP")
 				{
 					if (server.arg(i) != "")
@@ -386,9 +401,9 @@ void handle_setting()
 						if (String(server.arg(i)) == "OK")
 						{
 							wifiAP = true;
-							//if ((config.wifi_mode == WIFI_STA_FIX) || (config.wifi_mode == WIFI_AP_STA_FIX))
+							// if ((config.wifi_mode == WIFI_STA_FIX) || (config.wifi_mode == WIFI_AP_STA_FIX))
 							//	config.wifi_mode = WIFI_AP_STA_FIX;
-							//else
+							// else
 							//	config.wifi_mode = WIFI_AP_FIX;
 						}
 					}
@@ -400,9 +415,9 @@ void handle_setting()
 						if (String(server.arg(i)) == "OK")
 						{
 							wifiSTA = true;
-							//if ((config.wifi_mode == WIFI_AP_FIX)||(config.wifi_mode == WIFI_AP_STA_FIX))
+							// if ((config.wifi_mode == WIFI_AP_FIX)||(config.wifi_mode == WIFI_AP_STA_FIX))
 							//	config.wifi_mode = WIFI_AP_STA_FIX;
-							//else
+							// else
 							//	config.wifi_mode = WIFI_STA_FIX;
 						}
 					}
@@ -458,6 +473,14 @@ void handle_setting()
 						strcpy(config.wifi_pass, server.arg(i).c_str());
 					}
 				}
+				if (server.argName(i) == "wifi_pwr")
+				{
+					if (server.arg(i) != "")
+					{
+						if (isValidNumber(server.arg(i)))
+							config.wifi_power = server.arg(i).toInt();
+					}
+				}
 			}
 			if (wifiAP && wifiSTA)
 			{
@@ -476,8 +499,11 @@ void handle_setting()
 				config.wifi_mode = WIFI_OFF_FIX;
 			}
 			saveEEPROM();
-			if (adcIsr)
-				timerAlarmEnable(timer);
+			WiFi.disconnect();
+			// #ifndef I2S_INTERNAL
+			// 			if (adcIsr)
+			// 				timerAlarmEnable(timer);
+			// #endif
 		}
 	}
 
@@ -502,7 +528,7 @@ void handle_setting()
 	webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" id=\"gpsAlt\" name=\"gpsAlt\" type=\"text\" value=\"" + String(config.gps_alt) + "\" /></div>\n";
 	webString += "</div>\n";
 
-	webString += "</div>\n<hr>\n"; //div general
+	webString += "</div>\n<hr>\n"; // div general
 
 	webString += "<div class = \"col-pad\">\n<h3>WiFi Network</h3>\n";
 	webString += "<div class=\"form-group\">\n";
@@ -540,7 +566,21 @@ void handle_setting()
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi Client PASSWORD</label>\n";
 	webString += "<div class=\"col-sm-4 col-xs-6\"><input class=\"form-control\" id=\"wifi_pass\" name=\"wifi_pass\" type=\"password\" value=\"" + String(config.wifi_pass) + "\" /></div>\n";
 	webString += "</div>\n";
-	webString += "</div>\n<hr>\n"; //div network
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi Power</label>\n";
+	webString += "<div class=\"col-sm-4 col-xs-6\"><select name=\"wifi_pwr\" id=\"wifi_pwr\">\n";
+	for (int i = 0; i < 12; i++)
+	{
+		if (config.wifi_power == wifiPwr[i][0])
+			webString += "<option value=\"" + String(wifiPwr[i][0], 0) + "\" selected>" + String(wifiPwr[i][1], 1) + " dBm</option>\n";
+		else
+			webString += "<option value=\"" + String(wifiPwr[i][0], 0) + "\" >" + String(wifiPwr[i][1], 1) + " dBm</option>\n";
+	}
+	webString += "</select></div>\n";
+	webString += "</div>\n";
+
+	webString += "</div>\n<hr>\n"; // div network
 
 	webString += "<div class = \"col-pad\">\n<h3>WiFi Status</h3>\n";
 	webString += "<div class=\"form-group\">\n";
@@ -565,13 +605,64 @@ void handle_setting()
 		webString += "OFF";
 	}
 
+	wifi_power_t wpr = WiFi.getTxPower();
+	String wifipower = "";
+	if (wpr < 8)
+	{
+		wifipower = "-1 dBm";
+	}
+	else if (wpr < 21)
+	{
+		wifipower = "2 dBm";
+	}
+	else if (wpr < 29)
+	{
+		wifipower = "5 dBm";
+	}
+	else if (wpr < 35)
+	{
+		wifipower = "8.5 dBm";
+	}
+	else if (wpr < 45)
+	{
+		wifipower = "11 dBm";
+	}
+	else if (wpr < 53)
+	{
+		wifipower = "13 dBm";
+	}
+	else if (wpr < 61)
+	{
+		wifipower = "15 dBm";
+	}
+	else if (wpr < 69)
+	{
+		wifipower = "17 dBm";
+	}
+	else if (wpr < 75)
+	{
+		wifipower = "18.5 dBm";
+	}
+	else if (wpr < 77)
+	{
+		wifipower = "19 dBm";
+	}
+	else if (wpr < 80)
+	{
+		wifipower = "19.5 dBm";
+	}
+	else
+	{
+		wifipower = "20 dBm";
+	}
+
 	webString += "</td></tr>\n";
 	webString += "<tr><td align=\"right\"><b>MAC:</b></td>\n";
 	webString += "<td align=\"left\">" + String(WiFi.macAddress()) + "</td></tr>\n";
 	webString += "<tr><td align=\"right\"><b>Channel:</b></td>\n";
 	webString += "<td align=\"left\">" + String(WiFi.channel()) + "</td></tr>\n";
 	webString += "<tr><td align=\"right\"><b>TX Power:</b></td>\n";
-	webString += "<td align=\"left\">" + String(WiFi.getTxPower()) + "</td></tr>\n";
+	webString += "<td align=\"left\">" + wifipower + "</td></tr>\n";
 	webString += "<tr><td align=\"right\"><b>SSID:</b></td>\n";
 	webString += "<td align=\"left\">" + String(WiFi.SSID()) + "</td></tr>\n";
 	webString += "<tr><td align=\"right\"><b>Local IP:</b></td>\n";
@@ -584,7 +675,7 @@ void handle_setting()
 
 	webString += "</div><hr>\n";
 
-	webString += "</div>\n<hr>\n"; //div loger
+	webString += "</div>\n<hr>\n"; // div loger
 
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
@@ -602,19 +693,43 @@ void handle_setting()
 
 void handle_service()
 {
+	bool noiseEn = false;
+	bool agcEn = false;
 	if (server.hasArg("commit"))
 	{
-		bool adcIsr = timerAlarmEnabled(timer);
-		if (adcIsr)
-			timerAlarmDisable(timer);
-		disconnect_from_host(); //Restart M17 to Reflector
+		// #ifndef I2S_INTERNAL
+		// 		bool adcIsr = timerAlarmEnabled(timer);
+		// 		if (adcIsr)
+		// 			timerAlarmDisable(timer);
+		// #endif
+		disconnect_from_host(); // Restart M17 to Reflector
 		for (uint8_t i = 0; i < server.args(); i++)
 		{
-			//Serial.print("SERVER ARGS ");
-			//Serial.print(server.argName(i));
-			//Serial.print("=");
-			//Serial.println(server.arg(i));
+			// Serial.print("SERVER ARGS ");
+			// Serial.print(server.argName(i));
+			// Serial.print("=");
+			// Serial.println(server.arg(i));
 
+			if (server.argName(i) == "noiseCheck")
+			{
+				if (server.arg(i) != "")
+				{
+					if (String(server.arg(i)) == "OK")
+					{
+						noiseEn = true;
+					}
+				}
+			}
+			if (server.argName(i) == "agcCheck")
+			{
+				if (server.arg(i) != "")
+				{
+					if (String(server.arg(i)) == "OK")
+					{
+						agcEn = true;
+					}
+				}
+			}
 			if (server.argName(i) == "m17Name")
 			{
 				if (server.arg(i) != "")
@@ -689,13 +804,23 @@ void handle_service()
 					}
 				}
 			}
-
+#ifndef SA818
 			if (server.argName(i) == "vox_level")
 			{
 				if (server.arg(i) != "")
 				{
 					if (isValidNumber(server.arg(i)))
 						config.vox_level = server.arg(i).toInt();
+				}
+			}
+#endif
+
+			if (server.argName(i) == "mic_level")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.mic = server.arg(i).toInt();
 				}
 			}
 
@@ -716,14 +841,18 @@ void handle_service()
 					{
 						config.codec2_mode = server.arg(i).toInt();
 						if (config.codec2_mode != 0)
-							config.codec2_mode = 2; //CODEC2_MODE_1600 1600bps
+							config.codec2_mode = 2; // CODEC2_MODE_1600 1600bps
 					}
 				}
 			}
 		}
+		config.noise = noiseEn;
+		config.agc = agcEn;
 		saveEEPROM();
-		if (adcIsr)
-			timerAlarmDisable(timer);
+		// #ifndef I2S_INTERNAL
+		// 		if (adcIsr)
+		// 			timerAlarmDisable(timer);
+		// #endif
 	}
 
 	setHTML(3);
@@ -747,8 +876,21 @@ void handle_service()
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">M17 Module</label>\n";
-	webString += "<div class=\"col-sm-1 col-xs-2\"><input class=\"form-control\" id=\"m17Module\" name=\"m17Module\" type=\"text\" value=\"" + String(config.reflector_module) + "\" /></div>\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">M17 Module/ROOM</label>\n";
+	// webString += "<div class=\"col-sm-1 col-xs-2\"><input class=\"form-control\" id=\"m17Module\" name=\"m17Module\" type=\"text\" value=\"" + String(config.reflector_module) + "\" /></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"m17Module\" id=\"m17Module\">\n";
+	for (char mod = 'A'; mod <= 'Z'; mod++)
+	{
+		if (config.reflector_module == mod)
+		{
+			webString += "<option value=\"" + String(mod) + "\" selected>" + String(mod) + "</option>\n";
+		}
+		else
+		{
+			webString += "<option value=\"" + String(mod) + "\">" + String(mod) + "</option>\n";
+		}
+	}
+	webString += "</select></div>\n";
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
@@ -757,8 +899,21 @@ void handle_service()
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">myModule</label>\n";
-	webString += "<div class=\"col-sm-1 col-xs-2\"><input class=\"form-control\" id=\"myModM17\" name=\"myModM17\" type=\"text\" value=\"" + String(config.mymodule) + "\" /></div>\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">myModule/SSID</label>\n";
+	// webString += "<div class=\"col-sm-1 col-xs-2\"><input class=\"form-control\" id=\"myModM17\" name=\"myModM17\" type=\"text\" value=\"" + String(config.mymodule) + "\" /></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"myModM17\" id=\"myModM17\">\n";
+	for (char mod = 'A'; mod <= 'Z'; mod++)
+	{
+		if (config.mymodule == mod)
+		{
+			webString += "<option value=\"" + String(mod) + "\" selected>" + String(mod) + "</option>\n";
+		}
+		else
+		{
+			webString += "<option value=\"" + String(mod) + "\">" + String(mod) + "</option>\n";
+		}
+	}
+	webString += "</select></div>\n";
 	webString += "</div>\n";
 
 	String cmSelSqlT = "";
@@ -773,9 +928,11 @@ void handle_service()
 	}
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Key PTT Mode</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"sql\" id=\"sql\">\n<option value=\"1\" " + cmSelSqlT + ">SQL Signal</option>\n<option value=\"0\" " + cmSelSqlF + ">VOX</option></select></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"sql\" id=\"sql\">\n<option value=\"1\" " + cmSelSqlT + ">SQC Signal</option>\n<option value=\"0\" " + cmSelSqlF + ">VOX</option></select></div>\n";
 	webString += "</div>\n";
 
+	cmSelSqlT = "";
+	cmSelSqlF = "";
 	if (config.sql_active)
 	{
 		cmSelSqlT = "selected";
@@ -785,18 +942,26 @@ void handle_service()
 		cmSelSqlF = "selected";
 	}
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">SQL Active</label>\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">SQC Active</label>\n";
 	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"sql_active\" id=\"sql_active\">\n<option value=\"1\" " + cmSelSqlT + ">HIGH</option>\n<option value=\"0\" " + cmSelSqlF + ">LOW</option></select></div>\n";
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">VOX DELAY</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"vox_delay\" name=\"vox_delay\" min=\"1\" max=\"200\" value=\"" + String(config.vox_delay) + "\" /></div>\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">VOX/PTT DELAY</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"vox_delay\" name=\"vox_delay\" min=\"0\" max=\"200\" value=\"" + String(config.vox_delay) + "\" /></div>\n";
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
+
+#ifndef SA818
 	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">VOX Level</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"vox_level\" name=\"vox_level\" type=\"range\" min=\"0\" max=\"100\" value=\"" + String(config.vox_level) + "\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">" + String(config.vox_level) + "</span></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"vox_level\" name=\"vox_level\" type=\"range\" min=\"0\" max=\"255\" value=\"" + String(config.vox_level) + "\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">" + String(config.vox_level) + "</span></div>\n";
+#endif
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Audio->M17 Gain</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"mic_level\" name=\"mic_level\" type=\"range\" min=\"1\" max=\"20\" value=\"" + String(config.mic) + "\" onchange=\"showMicValue(this.value)\" /><span id=\"micShow\">" + String(config.mic) + "</span></div>\n";
 	webString += "</div>\n";
 
 	String cmSel3200 = "";
@@ -814,6 +979,24 @@ void handle_service()
 	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"codec2_mode\" id=\"codec2_mode\">\n<option value=\"0\" " + cmSel3200 + ">CODEC2_3200</option>\n<option value=\"2\" " + cmSel1600 + ">CODEC2_1600</option></select></div>\n";
 	webString += "</div>\n";
 
+	//#ifdef I2S_INTERNAL
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Noise Cancel</label>\n";
+	String noiseFlage = "";
+	if (config.noise)
+		noiseFlage = "checked";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_1\" name=\"noiseCheck\" type=\"checkbox\" value=\"OK\" " + noiseFlage + "/></div>\n";
+	webString += "</div>\n";
+	//#endif
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">AGC</label>\n";
+	String agcFlage = "";
+	if (config.agc)
+		agcFlage = "checked";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_2\" name=\"agcCheck\" type=\"checkbox\" value=\"OK\" " + agcFlage + "/></div>\n";
+	webString += "</div>\n";
+
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
@@ -826,8 +1009,268 @@ void handle_service()
 	webString += "</body></html>\n";
 	server.send(200, "text/html", webString); // send to someones browser when asked
 
-	delay(100);
+	// delay(100);
 }
+
+#ifdef SA818
+void handle_radio()
+{
+	// bool noiseEn=false;
+	// bool agcEn=false;
+	if (server.hasArg("commit"))
+	{
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
+			// Serial.print("SERVER ARGS ");
+			// Serial.print(server.argName(i));
+			// Serial.print("=");
+			// Serial.println(server.arg(i));
+
+			// if (server.argName(i) == "agcCheck")
+			// {
+			// 	if (server.arg(i) != "")
+			// 		{
+			// 			if (String(server.arg(i)) == "OK")
+			// 			{
+			// 				agcEn=true;
+			// 			}
+			// 		}
+			// }
+
+			if (server.argName(i) == "nw_band")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+					{
+						config.band = server.arg(i).toInt();
+						// if (server.arg(i).toInt())
+						// 	config.band = 1;
+						// else
+						// 	config.band = 0;
+					}
+				}
+			}
+
+			if (server.argName(i) == "volume")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.volume = server.arg(i).toInt();
+				}
+			}
+
+			if (server.argName(i) == "rf_power")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+					{
+						if (server.arg(i).toInt())
+							config.rf_power = true;
+						else
+							config.rf_power = false;
+					}
+				}
+			}
+
+			if (server.argName(i) == "sql_level")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.sql_level = server.arg(i).toInt();
+				}
+			}
+
+			if (server.argName(i) == "tx_freq")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.freq_tx = server.arg(i).toFloat();
+				}
+			}
+			if (server.argName(i) == "rx_freq")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.freq_rx = server.arg(i).toFloat();
+				}
+			}
+
+			if (server.argName(i) == "tx_offset")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.offset_tx = server.arg(i).toInt();
+				}
+			}
+			if (server.argName(i) == "rx_offset")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.offset_rx = server.arg(i).toInt();
+				}
+			}
+
+			if (server.argName(i) == "tx_ctcss")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.tone_tx = server.arg(i).toInt();
+				}
+			}
+			if (server.argName(i) == "rx_ctcss")
+			{
+				if (server.arg(i) != "")
+				{
+					if (isValidNumber(server.arg(i)))
+						config.tone_rx = server.arg(i).toInt();
+				}
+			}
+		}
+		// config.noise=noiseEn;
+		// config.agc=agcEn;
+		saveEEPROM();
+		// delay(100);
+		SA818_INIT(false);
+	}
+
+	setHTML(6);
+	webString += "<div class=\"col-xs-10\">\n";
+	webString += "<form accept-charset=\"UTF-8\" action=\"/radio\" class=\"form-horizontal\" id=\"radio_form\" method=\"post\">\n";
+
+	webString += "<div>\n<h3>RF Module SA818/SA868</h3>\n";
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Frequency</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"tx_freq\" name=\"tx_freq\" min=\"144.0000\" max=\"148.0000\" step=\"0.0125\" value=\"" + String(config.freq_tx, 4) + "\" /></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX Frequency</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"rx_freq\" name=\"rx_freq\" min=\"144.0000\" max=\"148.0000\" step=\"0.0125\" value=\"" + String(config.freq_rx, 4) + "\" /></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Offset</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"tx_offset\" name=\"tx_offset\" min=\"-5000\" max=\"5000\" step=\"100\" value=\"" + String(config.offset_tx) + "\" /></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX Offset</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"rx_offset\" name=\"rx_offset\" min=\"-5000\" max=\"5000\" step=\"100\" value=\"" + String(config.offset_rx) + "\" /></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX CTCSS</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"tx_ctcss\" id=\"tx_ctcss\">\n";
+	for (int i = 0; i < 39; i++)
+	{
+		if (config.tone_tx == i)
+			webString += "<option value=\"" + String(i) + "\" selected>" + String(ctcss[i], 1) + "</option>\n";
+		else
+			webString += "<option value=\"" + String(i) + "\" >" + String(ctcss[i], 1) + "</option>\n";
+	}
+	webString += "</select></div>\n";
+	webString += "</div>\n";
+	// webString += "<div class=\"form-group\">\n";
+	// webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX CTCSS Ch</label>\n";
+	// webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"tx_ctcss\" name=\"tx_ctcss\" min=\"0\" max=\"38\" step=\"1\" value=\"" + String(config.tone_tx) + "\" /></div>\n";
+	// webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX CTCSS</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_ctcss\" id=\"rx_ctcss\">\n";
+	for (int i = 0; i < 39; i++)
+	{
+		if (config.tone_rx == i)
+			webString += "<option value=\"" + String(i) + "\" selected>" + String(ctcss[i], 1) + "</option>\n";
+		else
+			webString += "<option value=\"" + String(i) + "\" >" + String(ctcss[i], 1) + "</option>\n";
+	}
+	webString += "</select></div>\n";
+	webString += "</div>\n";
+
+	// webString += "<div class=\"form-group\">\n";
+	// webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX CTCSS Ch</label>\n";
+	// webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"rx_ctcss\" name=\"rx_ctcss\" min=\"0\" max=\"38\" step=\"1\" value=\"" + String(config.tone_rx) + "\" /></div>\n";
+	// webString += "</div>\n";
+
+	String cmSelSqlT = "";
+	String cmSelSqlF = "";
+	if (config.band)
+	{
+		cmSelSqlT = "selected";
+	}
+	else
+	{
+		cmSelSqlF = "selected";
+	}
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Narrow/Wide</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"nw_band\" id=\"nw_band\">\n<option value=\"1\" " + cmSelSqlT + ">25.0KHz</option>\n<option value=\"0\" " + cmSelSqlF + ">12.5KHz</option></select></div>\n";
+	webString += "</div>\n";
+
+	cmSelSqlF = "";
+	cmSelSqlT = "";
+	if (config.rf_power)
+	{
+		cmSelSqlT = "selected";
+	}
+	else
+	{
+		cmSelSqlF = "selected";
+	}
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RF Power</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"rf_power\" id=\"rf_power\">\n<option value=\"1\" " + cmSelSqlT + ">HIGH</option>\n<option value=\"0\" " + cmSelSqlF + ">LOW</option></select></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">VOLUME</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"volume\" name=\"volume\" type=\"range\" min=\"1\" max=\"8\" value=\"" + String(config.volume) + "\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">" + String(config.volume) + "</span></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">SQL Level</label>\n";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"sql_level\" name=\"sql_level\" type=\"range\" min=\"0\" max=\"8\" value=\"" + String(config.sql_level) + "\" onchange=\"showSqlValue(this.value)\" /><span id=\"sqlShow\">" + String(config.sql_level) + "</span></div>\n";
+	webString += "</div>\n";
+
+	// webString += "<div class=\"form-group\">\n";
+	// webString += "<label class=\"col-sm-3 col-xs-12 control-label\">MIC Gain</label>\n";
+	// webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"mic_level\" name=\"mic_level\" type=\"range\" min=\"1\" max=\"20\" value=\"" + String(config.mic) + "\" onchange=\"showMicValue(this.value)\" /><span id=\"micShow\">" + String(config.mic) + "</span></div>\n";
+	// webString += "</div>\n";
+
+	// webString += "<div class=\"form-group\">\n";
+	// webString += "<label class=\"col-sm-3 col-xs-12 control-label\">AGC</label>\n";
+	// String agcFlage = "";
+	// if (config.agc)
+	// 	agcFlage = "checked";
+	// webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_2\" name=\"agcCheck\" type=\"checkbox\" value=\"OK\" " + agcFlage + "/></div>\n";
+	// webString += "</div>\n";
+
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
+	// webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" id=\"radio_set_sumbit\" name=\"commit\" type=\"submit\" value=\"SET\" maxlength=\"80\"/></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" id=\"radio_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Save Config\" maxlength=\"80\"/></div>\n";
+	webString += "</div>\n";
+
+	webString += "</form></div>\n";
+
+	webString += "</body></html>\n";
+	server.send(200, "text/html", webString); // send to someones browser when asked
+
+	// delay(100);
+}
+#endif
 
 void handle_system()
 {
@@ -835,10 +1278,10 @@ void handle_system()
 	{
 		for (uint8_t i = 0; i < server.args(); i++)
 		{
-			//Serial.print("SERVER ARGS ");
-			//Serial.print(server.argName(i));
-			//Serial.print("=");
-			//Serial.println(server.arg(i));
+			// Serial.print("SERVER ARGS ");
+			// Serial.print(server.argName(i));
+			// Serial.print("=");
+			// Serial.println(server.arg(i));
 			if (server.argName(i) == "SetTimeNtp")
 			{
 				if (server.arg(i) != "")
@@ -854,15 +1297,15 @@ void handle_system()
 	{
 		for (uint8_t i = 0; i < server.args(); i++)
 		{
-			//Serial.print("SERVER ARGS ");
-			//Serial.print(server.argName(i));
-			//Serial.print("=");
-			//Serial.println(server.arg(i));
+			// Serial.print("SERVER ARGS ");
+			// Serial.print(server.argName(i));
+			// Serial.print("=");
+			// Serial.println(server.arg(i));
 			if (server.argName(i) == "SetTime")
 			{
 				if (server.arg(i) != "")
 				{
-					//struct tm tmn;
+					// struct tm tmn;
 					String date = getValue(server.arg(i), ' ', 0);
 					String time = getValue(server.arg(i), ' ', 1);
 					int yyyy = getValue(date, '-', 0).toInt();
@@ -871,7 +1314,7 @@ void handle_system()
 					int hh = getValue(time, ':', 0).toInt();
 					int ii = getValue(time, ':', 1).toInt();
 					int ss = getValue(time, ':', 2).toInt();
-					//int ss = 0;
+					// int ss = 0;
 
 					tmElements_t timeinfo;
 					timeinfo.Year = yyyy - 1970;
@@ -882,14 +1325,14 @@ void handle_system()
 					timeinfo.Second = ss;
 					time_t timeStamp = makeTime(timeinfo);
 
-					//tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec
+					// tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec
 
 					time_t rtc = timeStamp - 25200;
 					timeval tv = {rtc, 0};
 					timezone tz = {TZ_SEC + DST_MN, 0};
 					settimeofday(&tv, &tz);
 
-					//Serial.println("Update TIME " + server.arg(i));
+					// Serial.println("Update TIME " + server.arg(i));
 					Serial.print("Set New Time at ");
 					Serial.print(dd);
 					Serial.print("/");
@@ -916,9 +1359,9 @@ void handle_system()
 	getLocalTime(&tmstruct, 5000);
 	sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d", (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
 
-	//webMessage = "";
+	// webMessage = "";
 	setHTML(4);
-	//webString += "<div class=\"col-xs-12\">\n";
+	// webString += "<div class=\"col-xs-12\">\n";
 	webString += "<script type=\"text/javascript\" src=\"//code.jquery.com/jquery-2.1.1.min.js\"></script>\n";
 	webString += "<script type=\"text/javascript\" src=\"//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js\"></script>\n";
 	webString += "<script src=\"//cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment-with-locales.js\"></script>\n";
@@ -936,7 +1379,7 @@ void handle_system()
 	webString += "<td><label class=\"col-sm-2 col-xs-12 control-label\">DATE/TIME</label></td>\n";
 	webString += "<td><div class=\"input-group date\" id='datetimepicker1'><input class=\"form-control\" name=\"SetTime\" type=\"text\" value=\"" + String(strTime) + "\" />\n";
 	webString += "<span class=\"input-group-addon\">\n<span class=\"glyphicon glyphicon-calendar\">\n</span></span></div></td>\n";
-	//webString += "<div class=\"col-sm-3 col-xs-6\"><button class=\"btn btn-primary\" data-args=\"[true]\" data-method=\"getDate\" type=\"button\" data-related-target=\"#SetTime\" />Get Date</button></div>\n";
+	// webString += "<div class=\"col-sm-3 col-xs-6\"><button class=\"btn btn-primary\" data-args=\"[true]\" data-method=\"getDate\" type=\"button\" data-related-target=\"#SetTime\" />Get Date</button></div>\n";
 	webString += "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" name=\"updateTime\" type=\"submit\" value=\"Time Update\" maxlength=\"80\"/></td>\n";
 	webString += "</div>\n</form>\n</tr><tr>\n";
 
@@ -1000,7 +1443,7 @@ void handle_system()
 	webString += "</body></html>\n";
 	server.send(200, "text/html", webString); // send to someones browser when asked
 
-	delay(100);
+	// delay(100);
 }
 
 void handle_firmware()
@@ -1008,11 +1451,11 @@ void handle_firmware()
 	char strCID[50];
 	uint64_t chipid = ESP.getEfuseMac();
 	sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
-	//webMessage = "";
+	// webMessage = "";
 	setHTML(5);
 
 	webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
-	webString += "<b>Current Hardware Version:</b> M17Hotspot\n<br/>";
+	webString += "<b>Current Hardware Version:</b> M17AnalogGateway\n<br/>";
 	webString += "<b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
 	webString += "<b>Develop by:</b> HS5TQA\n<br />";
 	webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
@@ -1022,8 +1465,8 @@ void handle_firmware()
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-2 col-xs-6 control-label\">FILE</label>\n";
 	webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
-	//webString += "<div class=\"col-sm-4 col-xs-12\"><label id='file-input' for='file'>   Choose file...</label></div>\n";
-	//webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
+	// webString += "<div class=\"col-sm-4 col-xs-12\"><label id='file-input' for='file'>   Choose file...</label></div>\n";
+	// webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
 	webString += "</div>\n";
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
@@ -1075,14 +1518,14 @@ void handle_firmware()
 	webString += "</body></html>\n";
 	server.send(200, "text/html", webString); // send to someones browser when asked
 
-	delay(100);
+	// delay(100);
 }
 
 void handle_default()
 {
 	defaultSetting = true;
 	defaultConfig();
-	//webMessage = "";
+	// webMessage = "";
 	handle_setting();
 	defaultSetting = false;
 }
@@ -1149,10 +1592,10 @@ void handle_download()
 		else
 			dataType = "application/x-gzip";
 	}
-	//webString = "<html><head>\n";
-	//webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
-	//webMessage += "</head><body>\n";
-	//webString += "</body></html>\n";
+	// webString = "<html><head>\n";
+	// webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
+	// webMessage += "</head><body>\n";
+	// webString += "</body></html>\n";
 	File myFile = SD.open("/" + path, "r");
 	if (myFile)
 	{
@@ -1250,6 +1693,9 @@ void webService()
 	server.on("/download", handle_download);
 	server.on("/delete", handle_delete);
 #endif
+#ifdef SA818
+	server.on("/radio", handle_radio);
+#endif
 	server.on("/default", handle_default);
 	server.on("/service", handle_service);
 	server.on("/system", handle_system);
@@ -1260,28 +1706,31 @@ void webService()
 		{
 			server.sendHeader("Connection", "close");
 			server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-			ESP.restart();
-		},
+			ESP.restart(); },
 		[]()
 		{
 			HTTPUpload &upload = server.upload();
 			if (upload.status == UPLOAD_FILE_START)
 			{
-				//Serial.printf("Firmware Update FILE: %s\n", upload.filename.c_str());
+				// Serial.printf("Firmware Update FILE: %s\n", upload.filename.c_str());
 				if (!Update.begin(UPDATE_SIZE_UNKNOWN))
-				{ //start with max available size
+				{ // start with max available size
 					Update.printError(Serial);
 					delay(3);
 				}
 				else
 				{
-					//wdtDisplayTimer = millis();
-					//wdtSensorTimer = millis();
-					vTaskSuspend(taskDSPHandle);
-					vTaskSuspend(taskUIHandle);
-					vTaskSuspend(taskNetworkHandle);
-					timerAlarmDisable(timer);
-					config.aprs = false;
+
+					// //wdtDisplayTimer = millis();
+					// //wdtSensorTimer = millis();
+					// disableCore0WDT();
+					// disableCore1WDT();
+					// disableLoopWDT();
+					// vTaskSuspend(taskDSPHandle);
+					// //vTaskSuspend(taskUIHandle);
+					// //vTaskSuspend(taskNetworkHandle);
+					// config.aprs = false;
+					frmUpdate(upload.filename);
 					delay(3);
 				}
 			}
@@ -1297,7 +1746,7 @@ void webService()
 			else if (upload.status == UPLOAD_FILE_END)
 			{
 				if (Update.end(true))
-				{ //true to set the size to the current progress
+				{ // true to set the size to the current progress
 					delay(3);
 				}
 				else

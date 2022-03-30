@@ -1,12 +1,28 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.2"
+#define VERSION "0.7"
 
-#define DEBUG
+//#define DEBUG
+
+//#define I2S_INTERNAL
 
 //#define SDCARD
-//#define OLED
+#define OLED
+//#define SA818
+#define SR_FRS
+
+#ifdef SR_FRS
+#ifndef SA818
+	#define SA818
+#endif
+#endif
+
+//#define CONFIG_DISABLE_HAL_LOCKS 1
+
+// #define MUTEX_LOCK()    do {} while (xSemaphoreTake(NULL, portMAX_DELAY) != pdPASS)
+// #define MUTEX_UNLOCK()  xSemaphoreGive(NULL)
+//xSemaphoreHandle _ledc_sys_lock = NULL;
 
 #define WIFI_OFF_FIX 0
 #define WIFI_AP_FIX 1
@@ -28,11 +44,14 @@
 const int timeZone = 7; // Bangkok
 
 #include <Arduino.h>
-#include <FS.h>
-#include <SD.h>
-#include <SPIFFS.h>
+// #include <FS.h>
+// #include <SD.h>
+// #include <SPIFFS.h>
 #include <cppQueue.h>
 #include <codec2.h>
+#include "esp_ns.h"
+#include "esp_agc.h"
+//#include "esp_vad.h"
 #include "soc/rtc_wdt.h"
 
 #include "HardwareSerial.h"
@@ -58,6 +77,7 @@ typedef struct Config_Struct
 	char wifi_pass[15];
 	char wifi_ap_ssid[20];
 	char wifi_ap_pass[15];
+	char wifi_power;
 	bool aprs;
 	char aprs_mycall[10];
 	char aprs_host[20];
@@ -86,6 +106,19 @@ typedef struct Config_Struct
 	bool sql;
 	bool sql_active;
 	int codec2_mode;
+	bool noise;
+	bool agc;
+	#ifdef SA818
+	float freq_rx;
+	float freq_tx;
+	int offset_rx;
+	int offset_tx;
+	int tone_rx;
+	int tone_tx;
+	uint8_t band;
+	uint8_t sql_level;
+	bool rf_power;
+	#endif
 } Configuration;
 
 typedef struct pkgListStruct
@@ -98,9 +131,11 @@ typedef struct pkgListStruct
 	uint8_t symbol;
 } pkgListType;
 
+
 void saveEEPROM();
 void defaultConfig();
 String getValue(String data, char separator, int index);
 boolean isValidNumber(String str);
+void frmUpdate(String str);
 
 #endif

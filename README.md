@@ -9,7 +9,6 @@ The project made M17AnalogGateway to convert digital voice with M17 mode to Anal
 * support M17 mref reflector
 * support noise cancel
 * support AGC
-* support TNC2 Raw protocol only
 * using USB serial for host connection and power supply
 * support Wi-Fi connection (UDP) to Reflector
 * support Web Service config and control system

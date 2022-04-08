@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.7"
+#define VERSION "0.7b"
 
 //#define DEBUG
 
@@ -9,7 +9,7 @@
 
 //#define SDCARD
 #define OLED
-//#define SA818
+#define SA818
 //#define SR_FRS
 
 #ifdef SR_FRS
@@ -41,6 +41,9 @@
 
 #define PKGLISTSIZE 10
 
+#define CODEC2_BUFF 800
+#define PCM_BUFF 4000
+
 const int timeZone = 7; // Bangkok
 
 #include <Arduino.h>
@@ -55,7 +58,6 @@ const int timeZone = 7; // Bangkok
 #include "soc/rtc_wdt.h"
 
 #include "HardwareSerial.h"
-#include "SoftwareSerial.h"
 #include "EEPROM.h"
 
 enum M17Flags
@@ -137,5 +139,6 @@ void defaultConfig();
 String getValue(String data, char separator, int index);
 boolean isValidNumber(String str);
 void frmUpdate(String str);
+void sendVoice(char *text);
 
 #endif

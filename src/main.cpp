@@ -29,7 +29,9 @@
 #include "main.h"
 #include "webservice.h"
 #include "m17.h"
+#include "Voice.h"
 #include <LMS.h>
+#include <DTMF.h>
 //#include "spiffs.h"
 #include "I2S.h"
 
@@ -137,7 +139,7 @@ const int natural = 1;
 //กรองความถี่สูงผ่าน >300Hz  HPF Butterworth Filter. 0-300Hz ช่วงความถี่ต่ำใช้กับโทน CTCSS/DCS ในวิทยุสื่อสารจะถูกรองทิ้ง
 ButterworthFilter hp_filter(300, 8000, ButterworthFilter::ButterworthFilter::Highpass, 1);
 //กรองความถี่ต่ำผ่าน <3.5KHz  LPF Butterworth Filter. ความถี่เสียงที่มากกว่า 3KHz ไม่ใช่ความถี่เสียงคนพูดจะถูกกรองทิ้ง
-ButterworthFilter lp_filter(3500, 8000, ButterworthFilter::ButterworthFilter::Lowpass, 1);
+ButterworthFilter lp_filter(3500, 8000, ButterworthFilter::ButterworthFilter::Lowpass, 2);
 #ifdef I2S_INTERNAL
 ButterworthFilter hp16K_filter(300, 16000, ButterworthFilter::ButterworthFilter::Highpass, 1);
 ButterworthFilter lp16K_filter(4000, 16000, ButterworthFilter::ButterworthFilter::Lowpass, 1);
@@ -146,13 +148,23 @@ ButterworthFilter lp16K_filter(4000, 16000, ButterworthFilter::ButterworthFilter
 CODEC2 *codec2_3200;
 CODEC2 *codec2_1600;
 
+// Instantiate the dtmf library with the number of samples to be taken
+// and the sampling rate.
+DTMF dtmf = DTMF(160, 8000.0F);
+
 //กำหนดค่าเริ่มต้นใช้โหมดของ Codec2
 int mode = CODEC2_MODE_3200;
 
 // Queue<char> audioq(300);
-cppQueue audioq(sizeof(uint8_t), 800, IMPLEMENTATION); // Instantiate queue
-cppQueue pcmq(sizeof(int16_t), 4000, IMPLEMENTATION);  // Instantiate queue
+cppQueue audioq(sizeof(uint8_t), CODEC2_BUFF, IMPLEMENTATION); // Instantiate queue
+cppQueue pcmq(sizeof(int16_t), PCM_BUFF, IMPLEMENTATION);	   // Instantiate queue
 // cppQueue adcq(sizeof(int16_t), 2000, IMPLEMENTATION);  // Instantiate queue
+
+char current_module='D';
+bool voicTx = false;
+bool linkToFlage = false;
+bool notLinkFlage = false;
+bool voiceIPFlage = false;
 
 int nstart_bit, nend_bit, bit_rate;
 short *buf;
@@ -340,6 +352,11 @@ float dBV;
 float dBu;
 int mVrms = 0;
 long mVsum = 0;
+int nochar_count = 0;
+float d_mags[8];
+char dtmf_command[10];
+uint8_t dtmf_idx = 0;
+
 void process_audio()
 {
 	int mV;
@@ -356,7 +373,7 @@ void process_audio()
 
 	if (tx)
 	{
-		if (pcmq.getCount() >= pcmWidth)
+		if ((pcmq.getCount() >= pcmWidth) && (audioq.getCount() < CODEC2_BUFF - 16))
 		{
 			float *audiof = (float *)malloc(pcmWidth * sizeof(float));
 			short *audio_in = (short *)malloc(pcmWidth * sizeof(short));
@@ -386,6 +403,46 @@ void process_audio()
 				// if(mV>mVmax) mVmax=mV;
 			}
 
+			if (nochar_count < 100)
+			{
+				dtmf.detect(d_mags, audiof);
+				// If N=64 magnitude needs to be around 1200
+				// If N=128 the magnitude can be set to 1800
+				// but you will need to play with it to get the right value
+				char thischar = dtmf.button(d_mags, 2500);
+				if (thischar)
+				{
+					if (nochar_count == 0)
+					{
+						memset(dtmf_command, 0, sizeof(dtmf_command));
+						dtmf_idx = 0;
+					}
+					dtmf_command[dtmf_idx++] = thischar;
+					Serial.print(thischar);
+					nochar_count = 1;
+					if (dtmf_idx >= sizeof(dtmf_command))
+						nochar_count = 1000;
+						// Print the magnitudes for debugging
+//#define DEBUG_PRINT
+#ifdef DEBUG_PRINT
+					for (int i = 0; i < 8; i++)
+					{
+						Serial.print("  ");
+						Serial.print(d_mags[i]);
+					}
+					Serial.println("");
+#endif
+				}
+				else
+				{
+					// print a newline
+					//if (++nochar_count == 50)
+					//	Serial.println("");
+					// don't let it wrap around
+					if (++nochar_count > 100)
+						nochar_count = 100;
+				}
+			}
 			//  dBu=20*log(mVrms/774.6);
 			//  dBV = 20 * log(mVrms);
 
@@ -443,7 +500,7 @@ void process_audio()
 				if (pcmWidth == 160)
 				{
 					memset(&audio_out[0], 0, pcmWidth * 2);																					// 3200 F/R mode
-					audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 160, 320, 1, &resample); // Change Sample rate 16Khz->8Khz
+					audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 160, 320, 1, &resample); // Change Sample rate 8Khz->16Khz
 					memset(&audio_buf[0], 0, pcmWidth * 2);
 					ns_process(ns_inst, audio_out, audio_buf);
 					memset(&audio_in[0], 0, pcmWidth);
@@ -452,7 +509,7 @@ void process_audio()
 				else if (pcmWidth == 320) // 1600 V/D mode
 				{
 					memset(&audio_out[0], 0, pcmWidth * 2);
-					audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 320, 640, 1, &resample); // Change Sample rate 16Khz->8Khz
+					audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 320, 640, 1, &resample); // Change Sample rate 8Khz->16Khz
 					memset(&audio_buf[0], 0, pcmWidth * 2);
 					ns_process(ns_inst, &audio_out[0], &audio_buf[0]);
 					ns_process(ns_inst, &audio_out[320], &audio_buf[320]);
@@ -486,7 +543,7 @@ void process_audio()
 			}
 
 			if (config.agc)
-			{
+			 {
 				short *audioIn = (short *)malloc(pcmWidth * sizeof(short));
 				if (audioIn != NULL)
 				{
@@ -536,8 +593,56 @@ void process_audio()
 	}
 	else
 	{
+		//Process DTMF after RX signal
+		if (dtmf_command[0] !=0)
+		{
+			Serial.printf("DTMF: %s\n", dtmf_command);
+			switch (dtmf_command[0])
+			{
+			case '0':
+				linkToFlage = true;
+				break;
+			case '#':
+				//while(audioq.getCount()) delay(10);
+				disconnect_from_host();
+				break;
+			case '*':
+			{
+				if (dtmf_command[1] == 0)
+				{
+					//while(audioq.getCount()) delay(10);
+					disconnect_from_host();
+					current_module=config.reflector_module;
+					break;
+				}
+				uint8_t ch = 0;
+				ch = atoi(&dtmf_command[1]);
+				ch -= 1;
+				if (ch < 26)
+				{
+					//while(audioq.getCount()) delay(10);
+					disconnect_from_host();
+					char refmodule = 'A' + ch;
+					current_module = refmodule;
+				}
+			}
+			break;
+			case 'A':
+				voicTx = true;
+				break;
+			case 'B':
+				voiceIPFlage = true;
+				break;
+			default:
+				break;
+			}
+			memset(dtmf_command, 0, sizeof(dtmf_command));
+			dtmf_idx = 0;
+			return;
+		}
+
 		int packetSize = audioq.getCount();
-		if (packetSize >= 8)
+		if (packetSize >= 8 && (pcmq.getCount() < (PCM_BUFF - pcmWidth)))
 		{
 			// Serial.printf("nbyte= %d\n", nbyte);
 			// Serial.printf("nsam= %d\n", nsam);
@@ -560,37 +665,67 @@ void process_audio()
 				else
 					codec2_decode(codec2_3200, audio_in, c2Buf);
 
-				// if (config.agc)
+				//if (config.agc)
 				//{
-				short *audioIn = (short *)malloc(pcmWidth * sizeof(short));
-				if (audioIn != NULL)
-				{
-					for (int i = 0; i < pcmWidth; i++)
+					short *audioIn = (short *)malloc(pcmWidth * sizeof(short));
+					if (audioIn != NULL)
 					{
-						audioIn[i] = audio_in[i];
-						audio_in[i] = 0;
+						for (int i = 0; i < pcmWidth; i++)
+						{
+							audioIn[i] = audio_in[i];
+							audio_in[i] = 0;
+						}
+						esp_agc_process(agc_handle, (short *)&audioIn[0], &audio_in[0], 80, 8000);	 // Audomatic gain control
+						esp_agc_process(agc_handle, (short *)&audioIn[80], &audio_in[80], 80, 8000); // Audomatic gain control
+						if (pcmWidth == 320)
+						{
+							esp_agc_process(agc_handle, (short *)&audioIn[160], &audio_in[160], 80, 8000); // Audomatic gain control
+							esp_agc_process(agc_handle, (short *)&audioIn[240], &audio_in[240], 80, 8000); // Audomatic gain control
+						}
+						free(audioIn);
 					}
-					esp_agc_process(agc_handle, (short *)&audioIn[0], &audio_in[0], 80, 8000);	 // Audomatic gain control
-					esp_agc_process(agc_handle, (short *)&audioIn[80], &audio_in[80], 80, 8000); // Audomatic gain control
-					if (pcmWidth == 320)
-					{
-						esp_agc_process(agc_handle, (short *)&audioIn[160], &audio_in[160], 80, 8000); // Audomatic gain control
-						esp_agc_process(agc_handle, (short *)&audioIn[240], &audio_in[240], 80, 8000); // Audomatic gain control
-					}
-					free(audioIn);
-				}
+					// short *audio_out = (short *)malloc(pcmWidth * sizeof(short) * 2);
+					// short *audio_buf = (short *)malloc(pcmWidth * sizeof(short) * 2);
+					// if ((audio_buf != NULL) && (audio_out !=NULL)){
+					// // for (int i = 0; i < pcmWidth; i++)
+					// // 	audio_in[i] = (int16_t)audiof[i];
+					// if (pcmWidth == 160)
+					// {
+					// 	memset(&audio_out[0], 0, pcmWidth * 2);																					// 3200 F/R mode
+					// 	audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 160, 320, 1, &resample); // Change Sample rate 8Khz->16Khz
+					// 	memset(&audio_buf[0], 0, pcmWidth * 2);
+					// 	ns_process(ns_inst, audio_out, audio_buf);
+					// 	memset(&audio_in[0], 0, pcmWidth);
+					// 	audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 320, 160, 1, &resample); // Change Sample rate 16Khz->8Khz
+					// }
+					// else if (pcmWidth == 320) // 1600 V/D mode
+					// {
+					// 	memset(&audio_out[0], 0, pcmWidth * 2);
+					// 	audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 320, 640, 1, &resample); // Change Sample rate 8Khz->16Khz
+					// 	memset(&audio_buf[0], 0, pcmWidth * 2);
+					// 	ns_process(ns_inst, &audio_out[0], &audio_buf[0]);
+					// 	ns_process(ns_inst, &audio_out[320], &audio_buf[320]);
+					// 	memset(&audio_in[0], 0, pcmWidth);
+					// 	audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 640, 320, 1, &resample); // Change Sample rate 16Khz->8Khz
+					// }
+					// free(audio_out);
+					// free(audio_buf);
+					// }
 				//}
 
 				for (int x = 0; x < pcmWidth; x++)
 				{
-					// float gain = (float)audio_in[x];
-					// gain *= 2.0;
-					// audio_in[x] = (short)gain;
-					#ifndef SA818
+// float gain = (float)audio_in[x];
+// gain *= 2.0;
+// audio_in[x] = (short)gain;
+#ifndef SA818
 					audio_in[x] = Amplify(audio_in[x], 150.0); // 64=x1
-					#else
-					audio_in[x] = Amplify(audio_in[x], 40.0);
-					#endif
+#else
+					audio_in[x] = Amplify(audio_in[x], 50.0);
+					//audio_in[x] = (short)audio_in[x];
+#endif
+					// while (pcmq.isFull())
+					// 	delay(50);
 					if (!pcmq.push(&audio_in[x]))
 					{
 						Serial.println("audioBuf is FULL");
@@ -621,13 +756,13 @@ void IRAM_ATTR onTime()
 		if (pcmq.getCount())
 		{
 			pcmq.pop(&adcR);
-			// ppmUpdate((int)adcR);
-			#ifdef SA818
+// ppmUpdate((int)adcR);
+#ifdef SA818
 			sndW = (uint8_t)((((int)adcR + 32768) >> 8) & 0xFF);
-			sndW-=50;
-			#else
+			sndW -= 50;
+#else
 			sndW = (uint8_t)((((int)adcR + 32768) >> 8) & 0xFF);
-			#endif
+#endif
 			ledcWrite(0, sndW); // DAC PWM
 								// dacWrite(SPEAKER_PIN, sndW);
 								// dac_output_voltage(DAC_CHANNEL_2, sndW);
@@ -662,19 +797,19 @@ void IRAM_ATTR onTime()
 
 		// Reduce noise floor ground
 		int adc = sample - offset;
-		if (!config.noise)
-		{
-			LMS.pushInput(adc);
-			if (ppm_Level < 1500)
-			{
-				LMS.pushNoise(adc);
-			}
-			adcR = (int16_t)LMS.pullOutput();
-		}
-		else
-		{
+		// if (!config.noise)
+		// {
+		// 	LMS.pushInput(adc);
+		// 	if (ppm_Level < 500)
+		// 	{
+		// 		LMS.pushNoise(adc);
+		// 	}
+		// 	adcR = (int16_t)LMS.pullOutput();
+		// }
+		// else
+		// {
 			adcR = (int16_t)adc;
-		}
+		//}
 
 		if (tx)
 		{
@@ -794,21 +929,21 @@ void SA818_INIT(bool boot)
 #else
 	Serial.println("SA868 Init");
 #endif
-if(boot)
-{
-	SerialRF.begin(9600, SERIAL_8N1, 14, 13);
-	pinMode(POWER_PIN, OUTPUT);
-	pinMode(PULLDOWN_PIN, OUTPUT);
-	pinMode(SQL_PIN, INPUT_PULLUP);
+	if (boot)
+	{
+		SerialRF.begin(9600, SERIAL_8N1, 14, 13);
+		pinMode(POWER_PIN, OUTPUT);
+		pinMode(PULLDOWN_PIN, OUTPUT);
+		pinMode(SQL_PIN, INPUT_PULLUP);
 
-	digitalWrite(POWER_PIN, LOW);
-	digitalWrite(PULLDOWN_PIN, LOW);
-	delay(500);
-	digitalWrite(PULLDOWN_PIN, HIGH);
-	delay(1500);
-	SerialRF.println();
-	delay(500);
-}
+		digitalWrite(POWER_PIN, LOW);
+		digitalWrite(PULLDOWN_PIN, LOW);
+		delay(500);
+		digitalWrite(PULLDOWN_PIN, HIGH);
+		delay(1500);
+		SerialRF.println();
+		delay(500);
+	}
 	SerialRF.println();
 	delay(500);
 	char str[100];
@@ -830,7 +965,7 @@ if(boot)
 	delay(500);
 	SerialRF.println("AT+SETTAIL=0");
 	delay(500);
-	SerialRF.println("AT+SETFILTER=1,1,1");
+	SerialRF.println("AT+SETFILTER=1,0,0");
 #endif
 	//SerialRF.println(str);
 	delay(500);
@@ -1046,7 +1181,7 @@ void topBar(int ws)
 		display.setCursor(50, 0);
 		display.print(String(config.reflector_name));
 		display.print("[");
-		display.print(String(config.reflector_module));
+		display.print(String(current_module));
 		display.print("]");
 		// display.drawString(50, 1, "[" + String(config.reflector_module) + "]");
 		//  display.drawLine(50,0,65,8,WHITE);
@@ -1196,13 +1331,14 @@ void setup()
 		digitalWrite(LED_TX, LOW);
 		digitalWrite(LED_RX, LOW);
 	}
+	current_module=config.reflector_module;
 
 	if (!config.sql_active)
 		pinMode(RSSI_PIN, INPUT_PULLUP); // If SQL Active Low to pullup GPIO PIN
 
 	connect_status = DISCONNECTED;
 
-	set_agc_config(agc_handle, 10, 1, -3);
+	set_agc_config(agc_handle, 15, 1, -6);
 
 #ifdef I2S_INTERNAL
 	ns_inst = ns_create(NS_FRAME_LENGTH_MS); // 10ms at 160sample,16Khz sample rate
@@ -1235,7 +1371,7 @@ void setup()
 
 	codec2_set_natural_or_gray(codec2_3200, !natural);
 	// codec2_set_lpc_post_filter(codec2_3200, 1, 0, 0.9, 0.3);
-	codec2_set_lpc_post_filter(codec2_3200, 1, 0, 0.9, 0.4);
+	codec2_set_lpc_post_filter(codec2_3200, 1, 0, 0.9, 0.3);
 	Serial.printf("Create CODEC2_3200 : nsam=%d ,nbit=%d ,nbyte=%d\n", nsam, nbit, nbyte);
 
 #ifdef SA818
@@ -1279,12 +1415,12 @@ int btn_count = 0;
 void loop()
 {
 	vTaskDelay(10 / portTICK_PERIOD_MS);
-// #ifdef SA818
-// 	if (SerialRF.available())
-// 	{
-// 		Serial.print(Serial.readString());
-// 	}
-// #endif
+	// #ifdef SA818
+	// 	if (SerialRF.available())
+	// 	{
+	// 		Serial.print(Serial.readString());
+	// 	}
+	// #endif
 	if (digitalRead(0) == LOW)
 	{
 		idleTimeout = 11;
@@ -1308,6 +1444,10 @@ void loop()
 				Serial.println("SYSTEM REBOOT NOW!");
 				esp_restart();
 			}
+			else
+			{
+				voicTx = true;
+			}
 			btn_count = 0;
 		}
 	}
@@ -1322,6 +1462,8 @@ void taskUI(void *pvParameters)
 {
 	int voxCount = 0;
 	String info = "";
+
+	char text[50];
 
 	idleTimeout = 30;
 	// micCur = config.mic;
@@ -1340,6 +1482,35 @@ void taskUI(void *pvParameters)
 		// Serial.print("task1 Uptime (ms): ");
 		// Serial.println(millis());
 		vTaskDelay(10 / portTICK_PERIOD_MS);
+		if (linkToFlage)
+		{
+			delay(1000);
+			linkToFlage = false;
+			sprintf(text, "g %s  %c", config.reflector_name, current_module);
+			sendVoice(text);
+		}
+		if (notLinkFlage)
+		{
+			delay(1000);
+			notLinkFlage = false;
+			sprintf(text, " n ");
+			sendVoice(text);
+		}
+		if (voicTx)
+		{
+			delay(1000);
+			voicTx = false;
+			sprintf(text, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXZ");
+			sendVoice(text);
+		}
+		if (voiceIPFlage)
+		{
+			delay(1000);
+			voiceIPFlage = false;
+			sprintf(text, "IP %s", WiFi.localIP().toString().c_str());
+			sendVoice(text);
+		}
+
 #ifdef OLED
 		if (millis() > tickSec)
 		{
@@ -1488,6 +1659,7 @@ void taskUI(void *pvParameters)
 					// digitalWrite(SPEAKER_PIN, 0);
 					ledcWrite(0, 0);
 					timerAlarmEnable(timer);
+					nochar_count = 0;
 					// Serial.printf("Vox mic=%d vox=%d\n",mic_level,config.vox_level);
 #endif
 #ifdef OLED
@@ -1941,7 +2113,8 @@ void taskNetwork(void *pvParameters)
 				if (tw > wifiTTL)
 				{
 					wifiTTL = tw + 60000;
-					Serial.println(F("WiFi Connecting.."));
+					Serial.print(F("WiFi Connecting to "));
+					Serial.println(config.wifi_ssid);
 					WiFi.disconnect();
 					WiFi.setHostname("M17Hotspot");
 
@@ -1963,7 +2136,7 @@ void taskNetwork(void *pvParameters)
 					else
 					{
 						beginM17();
-						m17ConectTimeout = millis() + 1000;
+						m17ConectTimeout = millis() + 10000;
 #ifdef DEBUG
 						Serial.println(F("WiFi connected"));
 						Serial.print(F("Host IP address: "));
@@ -1991,7 +2164,8 @@ void taskNetwork(void *pvParameters)
 					{
 						// if (millis() > (m17ConectTimeout + 10000))
 						// {
-						Serial.println(F("M17 Connecting.."));
+
+						Serial.printf("M17 Connecting to %s[%c]\n", config.reflector_host, current_module);
 						process_connect();
 #ifndef I2S_INTERNAL
 						timerAlarmEnable(timer); // Start sample audio when M17 First Connected.
@@ -2010,9 +2184,10 @@ void taskNetwork(void *pvParameters)
 						transmitM17();
 						pingTimeout = millis() + 600000;
 					}
-					if (millis() > (m17ConectTimeout + 10000))
+					if (millis() > (m17ConectTimeout + 30000))
 					{
 						disconnect_from_host();
+						connect_status = DISCONNECTED;
 #ifndef I2S_INTERNAL
 						timerAlarmDisable(timer);
 #endif
@@ -2087,4 +2262,49 @@ void frmUpdate(String str)
 	vTaskSuspend(taskUIHandle);
 	// vTaskSuspend(taskNetworkHandle);
 	config.aprs = false;
+}
+
+void sendVoice(char *text)
+{
+#ifdef SA818
+	digitalWrite(POWER_PIN, config.rf_power);
+#endif
+	digitalWrite(PTT_PIN, HIGH); // PTT Key talk to radio
+	digitalWrite(LED_TX, HIGH);
+	digitalWrite(LED_RX, LOW);
+	Serial.println("<VOICE TX>");
+	tx = false;
+	vox = false;
+	firstRX = false;
+	firstRxDisp = false;
+	rxRef = false;
+	mode = CODEC2_MODE_3200;
+	audioq.clean();
+	pcmq.clean();
+	audioq.flush();
+	//linkedTo(text);
+	RxTimeout = millis() + 30000;
+	timerAlarmEnable(timer);
+	//sprintf(text, "a  b  c  d  l  n  g  y");
+	Serial.println(text);
+	createVoice(text);
+	while (!pcmq.isEmpty())
+	{
+		if (millis() > RxTimeout)
+			break;
+		delay(1);
+	}
+	RxTimeout = 0;
+
+	//audioq.clean();
+	//pcmq.clean();
+	// firstRX = false;
+	// firstIdle = true;
+	Serial.println("<VOICE END>");
+#ifdef SA818
+	digitalWrite(POWER_PIN, LOW);
+#endif
+	digitalWrite(PTT_PIN, LOW); // PTT Key end to radio
+	digitalWrite(LED_TX, LOW);
+	digitalWrite(LED_RX, LOW);
 }

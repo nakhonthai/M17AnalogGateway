@@ -8,6 +8,7 @@
 #include "I2S.h"
 
 extern hw_timer_t *timer;
+extern char current_module;
 
 // Web Server;
 WebServer server(80);
@@ -758,6 +759,7 @@ void handle_service()
 				if (server.arg(i) != "")
 				{
 					config.reflector_module = server.arg(i).charAt(0);
+					current_module=config.reflector_module;
 				}
 			}
 

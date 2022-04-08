@@ -7,6 +7,13 @@
 #include "main.h"
 #include "m17.h"
 
+extern bool voicTx;
+extern bool linkToFlage;
+extern bool notLinkFlage;
+extern bool voiceIPFlage;
+
+extern char current_module;
+
 // The udp library class
 WiFiUDP udp;
 
@@ -45,7 +52,7 @@ void readyReadM17()
 {
 	uint8_t buf[100];
 	int size = udp.parsePacket();
-	if (size > 0)
+	if (size > 3)
 	{
 		udp.readBytes(buf, size);
 		// Serial.print("RECV: ");
@@ -53,13 +60,14 @@ void readyReadM17()
 		//	Serial.printf("%02x ", (unsigned char)buf[i]);
 		// }
 		// Serial.println();
-		if ((size == 10) && (memcmp(buf, "DISC", 4U) == 0))
+		if ((size == 4) && (memcmp(buf, "DISC", 4U) == 0))
 		{
-			connect_status = DISCONNECTED;
+			notLinkFlage = true;
 			pcmq.clean();
 			audioq.clean();
-			// adcq.clean();
 			Serial.println("DISCONNECT Host: " + udp.remoteIP().toString() + ":" + String(udp.remotePort()));
+			delay(500);
+			connect_status = DISCONNECTED;
 		}
 		if ((size == 4) && (memcmp(buf, "NACK", 4U) == 0))
 		{
@@ -124,10 +132,11 @@ void readyReadM17()
 				RxTimeout = 0;
 				pcmq.clean();
 				audioq.clean();
-				rxRef=true;
+				rxRef = true;
 				return;
 			}
-			if(streamid==txstreamid && frameid==tx_cnt){
+			if (streamid == txstreamid && frameid == tx_cnt)
+			{
 				rxRef = true;
 				return;
 			}
@@ -137,7 +146,6 @@ void readyReadM17()
 				firstRX = true;
 				pcmq.clean();
 				audioq.clean();
-				// adcq.clean();
 				m17ConectTimeout = millis();
 			}
 			nbyte = sz;
@@ -177,7 +185,7 @@ void transmitM17()
 		memset(dst, ' ', 9);
 		memcpy(dst, config.reflector_name, strlen(config.reflector_name));
 		// sprintf(&dst[0], "M17-THA  ");
-		dst[8] = config.reflector_module;
+		dst[8] = current_module;
 		dst[9] = 0x00;
 		M17encode_callsign((uint8_t *)dst);
 		memset(src, ' ', 9);
@@ -258,7 +266,7 @@ void terminateM17()
 	memset(dst, ' ', 9);
 	memcpy(dst, config.reflector_name, strlen(config.reflector_name));
 	// sprintf(&dst[0], "M17-THA  ");
-	dst[8] = config.reflector_module;
+	dst[8] = current_module;
 	dst[9] = 0x00;
 	M17encode_callsign((uint8_t *)dst);
 	memset(src, ' ', 9);
@@ -292,16 +300,16 @@ void terminateM17()
 	txframe[34] = tx_cnt >> 8;
 	txframe[35] = tx_cnt & 0xff;
 	// Payload 128bit
-	 int sz = 16;
-	 if (mode == CODEC2_MODE_1600)
-	 	sz = 8;
-	 else
-	 	sz = 16;
-	 for (int i = 0; i < sz; i++)
-	 {
-		 txframe[36 + i]=0;
-	 	//audioq.pop(&txframe[36 + i]);
-	 }
+	int sz = 16;
+	if (mode == CODEC2_MODE_1600)
+		sz = 8;
+	else
+		sz = 16;
+	for (int i = 0; i < sz; i++)
+	{
+		txframe[36 + i] = M17_3200_SILENCE[i];
+		//audioq.pop(&txframe[36 + i]);
+	}
 
 	udp.beginPacket(config.reflector_host, config.reflector_port);
 	udp.write((uint8_t *)txframe, 54);
@@ -313,19 +321,27 @@ void disconnect_from_host()
 {
 	char cs[10];
 	char d[100];
+	int timeout = 0;
+	while (!(tx_cnt & 0x8000))
+	{
+		delay(10);
+		if (++timeout > 200)
+			break;
+	}
 	memset(cs, ' ', 9);
 	memcpy(&cs[0], config.mycall, strlen(config.mycall));
 	// sprintf(&cs[0], "HS5TQA   ");
 	cs[8] = config.mymodule;
 	cs[9] = 0x00;
 	M17encode_callsign((uint8_t *)cs);
-	sprintf(d, "DISC");
+	sprintf(&d[0], "DISC");
 	memcpy(&d[4], cs, 6);
 	// Send a packet
 	udp.beginPacket(config.reflector_host, config.reflector_port);
 	udp.write((uint8_t *)d, 10);
 	udp.endPacket();
-	connect_status = DISCONNECTED;
+	//delay(500);
+	//connect_status = DISCONNECTED;
 	m17ConectTimeout = millis();
 }
 
@@ -405,11 +421,12 @@ void process_connect()
 	M17encode_callsign((uint8_t *)cs);
 	sprintf(&d[0], "CONN");
 	memcpy(&d[4], cs, 6);
-	d[10] = config.reflector_module;
+	d[10] = current_module;
 	// Send a packet
 	udp.beginPacket(config.reflector_host, config.reflector_port);
 	udp.write((uint8_t *)d, 11);
 	udp.endPacket();
 	connect_status = CONNECTING;
 	m17ConectTimeout = millis();
+	linkToFlage = true;
 }

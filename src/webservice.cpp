@@ -482,6 +482,14 @@ void handle_setting()
 							config.wifi_power = server.arg(i).toInt();
 					}
 				}
+				if (server.argName(i) == "wifi_protocol")
+				{
+					if (server.arg(i) != "")
+					{
+						if (isValidNumber(server.arg(i)))
+							config.wifi_protocol = server.arg(i).toInt();
+					}
+				}
 			}
 			if (wifiAP && wifiSTA)
 			{
@@ -566,6 +574,31 @@ void handle_setting()
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi Client PASSWORD</label>\n";
 	webString += "<div class=\"col-sm-4 col-xs-6\"><input class=\"form-control\" id=\"wifi_pass\" name=\"wifi_pass\" type=\"password\" value=\"" + String(config.wifi_pass) + "\" /></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi Mode</label>\n";
+	webString += "<div class=\"col-sm-4 col-xs-6\"><select name=\"wifi_protocol\" id=\"wifi_protocol\">\n";
+
+		if (config.wifi_protocol == 7){
+			webString += "<option value=\"1\">IEEE 802.11b</option>\n";
+			webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
+			webString += "<option value=\"7\" selected>IEEE 802.11bgn</option>\n";
+		}else if (config.wifi_protocol == 3){
+			webString += "<option value=\"1\">IEEE 802.11b</option>\n";
+			webString += "<option value=\"3\" selected>IEEE 802.11bg</option>\n";
+			webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
+		}else if (config.wifi_protocol == 1){
+			webString += "<option value=\"1\" selected>IEEE 802.11b</option>\n";
+			webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
+			webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
+		}else{
+			config.wifi_protocol = 7;
+			webString += "<option value=\"1\" selected>IEEE 802.11b</option>\n";
+			webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
+			webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
+		}
+	webString += "</select></div>\n";
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";

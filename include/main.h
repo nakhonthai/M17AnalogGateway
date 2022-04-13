@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.7b"
+#define VERSION "0.7d"
 
 //#define DEBUG
 
@@ -9,7 +9,7 @@
 
 //#define SDCARD
 #define OLED
-#define SA818
+//#define SA818
 //#define SR_FRS
 
 #ifdef SR_FRS
@@ -121,6 +121,7 @@ typedef struct Config_Struct
 	uint8_t sql_level;
 	bool rf_power;
 	#endif
+	uint8_t wifi_protocol;
 } Configuration;
 
 typedef struct pkgListStruct

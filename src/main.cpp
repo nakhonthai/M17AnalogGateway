@@ -10,6 +10,7 @@
 #include <driver/dac.h>
 #include <SPI.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <ESPmDNS.h>
 #include <WiFiClient.h>
 #include "esp_adc_cal.h"
@@ -160,7 +161,7 @@ cppQueue audioq(sizeof(uint8_t), CODEC2_BUFF, IMPLEMENTATION); // Instantiate qu
 cppQueue pcmq(sizeof(int16_t), PCM_BUFF, IMPLEMENTATION);	   // Instantiate queue
 // cppQueue adcq(sizeof(int16_t), 2000, IMPLEMENTATION);  // Instantiate queue
 
-char current_module='D';
+char current_module = 'D';
 bool voicTx = false;
 bool linkToFlage = false;
 bool notLinkFlage = false;
@@ -292,6 +293,7 @@ void defaultConfig()
 	config.rf_power = LOW;
 	config.volume = 6;
 #endif
+	config.wifi_protocol=7;
 	saveEEPROM();
 }
 
@@ -543,7 +545,7 @@ void process_audio()
 			}
 
 			if (config.agc)
-			 {
+			{
 				short *audioIn = (short *)malloc(pcmWidth * sizeof(short));
 				if (audioIn != NULL)
 				{
@@ -594,7 +596,7 @@ void process_audio()
 	else
 	{
 		//Process DTMF after RX signal
-		if (dtmf_command[0] !=0)
+		if (dtmf_command[0] != 0)
 		{
 			Serial.printf("DTMF: %s\n", dtmf_command);
 			switch (dtmf_command[0])
@@ -612,7 +614,7 @@ void process_audio()
 				{
 					//while(audioq.getCount()) delay(10);
 					disconnect_from_host();
-					current_module=config.reflector_module;
+					current_module = config.reflector_module;
 					break;
 				}
 				uint8_t ch = 0;
@@ -667,50 +669,50 @@ void process_audio()
 
 				//if (config.agc)
 				//{
-					short *audioIn = (short *)malloc(pcmWidth * sizeof(short));
-					if (audioIn != NULL)
+				short *audioIn = (short *)malloc(pcmWidth * sizeof(short));
+				if (audioIn != NULL)
+				{
+					for (int i = 0; i < pcmWidth; i++)
 					{
-						for (int i = 0; i < pcmWidth; i++)
-						{
-							audioIn[i] = audio_in[i];
-							audio_in[i] = 0;
-						}
-						esp_agc_process(agc_handle, (short *)&audioIn[0], &audio_in[0], 80, 8000);	 // Audomatic gain control
-						esp_agc_process(agc_handle, (short *)&audioIn[80], &audio_in[80], 80, 8000); // Audomatic gain control
-						if (pcmWidth == 320)
-						{
-							esp_agc_process(agc_handle, (short *)&audioIn[160], &audio_in[160], 80, 8000); // Audomatic gain control
-							esp_agc_process(agc_handle, (short *)&audioIn[240], &audio_in[240], 80, 8000); // Audomatic gain control
-						}
-						free(audioIn);
+						audioIn[i] = audio_in[i];
+						audio_in[i] = 0;
 					}
-					// short *audio_out = (short *)malloc(pcmWidth * sizeof(short) * 2);
-					// short *audio_buf = (short *)malloc(pcmWidth * sizeof(short) * 2);
-					// if ((audio_buf != NULL) && (audio_out !=NULL)){
-					// // for (int i = 0; i < pcmWidth; i++)
-					// // 	audio_in[i] = (int16_t)audiof[i];
-					// if (pcmWidth == 160)
-					// {
-					// 	memset(&audio_out[0], 0, pcmWidth * 2);																					// 3200 F/R mode
-					// 	audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 160, 320, 1, &resample); // Change Sample rate 8Khz->16Khz
-					// 	memset(&audio_buf[0], 0, pcmWidth * 2);
-					// 	ns_process(ns_inst, audio_out, audio_buf);
-					// 	memset(&audio_in[0], 0, pcmWidth);
-					// 	audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 320, 160, 1, &resample); // Change Sample rate 16Khz->8Khz
-					// }
-					// else if (pcmWidth == 320) // 1600 V/D mode
-					// {
-					// 	memset(&audio_out[0], 0, pcmWidth * 2);
-					// 	audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 320, 640, 1, &resample); // Change Sample rate 8Khz->16Khz
-					// 	memset(&audio_buf[0], 0, pcmWidth * 2);
-					// 	ns_process(ns_inst, &audio_out[0], &audio_buf[0]);
-					// 	ns_process(ns_inst, &audio_out[320], &audio_buf[320]);
-					// 	memset(&audio_in[0], 0, pcmWidth);
-					// 	audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 640, 320, 1, &resample); // Change Sample rate 16Khz->8Khz
-					// }
-					// free(audio_out);
-					// free(audio_buf);
-					// }
+					esp_agc_process(agc_handle, (short *)&audioIn[0], &audio_in[0], 80, 8000);	 // Audomatic gain control
+					esp_agc_process(agc_handle, (short *)&audioIn[80], &audio_in[80], 80, 8000); // Audomatic gain control
+					if (pcmWidth == 320)
+					{
+						esp_agc_process(agc_handle, (short *)&audioIn[160], &audio_in[160], 80, 8000); // Audomatic gain control
+						esp_agc_process(agc_handle, (short *)&audioIn[240], &audio_in[240], 80, 8000); // Audomatic gain control
+					}
+					free(audioIn);
+				}
+				// short *audio_out = (short *)malloc(pcmWidth * sizeof(short) * 2);
+				// short *audio_buf = (short *)malloc(pcmWidth * sizeof(short) * 2);
+				// if ((audio_buf != NULL) && (audio_out !=NULL)){
+				// // for (int i = 0; i < pcmWidth; i++)
+				// // 	audio_in[i] = (int16_t)audiof[i];
+				// if (pcmWidth == 160)
+				// {
+				// 	memset(&audio_out[0], 0, pcmWidth * 2);																					// 3200 F/R mode
+				// 	audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 160, 320, 1, &resample); // Change Sample rate 8Khz->16Khz
+				// 	memset(&audio_buf[0], 0, pcmWidth * 2);
+				// 	ns_process(ns_inst, audio_out, audio_buf);
+				// 	memset(&audio_in[0], 0, pcmWidth);
+				// 	audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 320, 160, 1, &resample); // Change Sample rate 16Khz->8Khz
+				// }
+				// else if (pcmWidth == 320) // 1600 V/D mode
+				// {
+				// 	memset(&audio_out[0], 0, pcmWidth * 2);
+				// 	audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 320, 640, 1, &resample); // Change Sample rate 8Khz->16Khz
+				// 	memset(&audio_buf[0], 0, pcmWidth * 2);
+				// 	ns_process(ns_inst, &audio_out[0], &audio_buf[0]);
+				// 	ns_process(ns_inst, &audio_out[320], &audio_buf[320]);
+				// 	memset(&audio_in[0], 0, pcmWidth);
+				// 	audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 640, 320, 1, &resample); // Change Sample rate 16Khz->8Khz
+				// }
+				// free(audio_out);
+				// free(audio_buf);
+				// }
 				//}
 
 				for (int x = 0; x < pcmWidth; x++)
@@ -808,7 +810,7 @@ void IRAM_ATTR onTime()
 		// }
 		// else
 		// {
-			adcR = (int16_t)adc;
+		adcR = (int16_t)adc;
 		//}
 
 		if (tx)
@@ -1331,7 +1333,7 @@ void setup()
 		digitalWrite(LED_TX, LOW);
 		digitalWrite(LED_RX, LOW);
 	}
-	current_module=config.reflector_module;
+	current_module = config.reflector_module;
 
 	if (!config.sql_active)
 		pinMode(RSSI_PIN, INPUT_PULLUP); // If SQL Active Low to pullup GPIO PIN
@@ -2059,11 +2061,57 @@ void taskDSP(void *pvParameters)
 }
 
 unsigned long int wifiTTL = 0;
+uint8_t current_protocol;
+esp_interface_t current_esp_interface;
+wifi_interface_t current_wifi_interface;
+
+esp_interface_t check_protocol()
+{
+	char error_buf1[100];
+
+	tcpip_adapter_get_esp_if(&current_esp_interface);
+	if (current_esp_interface == ESP_IF_WIFI_STA)
+		Serial.println("Interface is ESP_IF_WIFI_STA");
+	else if (current_esp_interface == ESP_IF_WIFI_AP)
+		Serial.println("Interface is ESP_IF_WIFI_AP");
+	else
+		Serial.println("Unknown interface!!");
+	current_wifi_interface = current_esp_interface;
+	if (current_wifi_interface == WIFI_IF_STA)
+		Serial.println("Interface is WIFI_IF_STA");
+	else if (current_wifi_interface == WIFI_IF_AP)
+		Serial.println("Interface is WIFI_IF_AP");
+	else
+		Serial.println("Unknown interface!!");
+	esp_err_t error_code = esp_wifi_get_protocol(current_wifi_interface, &current_protocol);
+	esp_err_to_name_r(error_code, error_buf1, 100);
+	Serial.print("esp_wifi_get_protocol error code: ");
+	Serial.println(error_buf1);
+	Serial.print("Current protocol code is ");
+	Serial.println(current_protocol);
+	if ((current_protocol & WIFI_PROTOCOL_11B) == WIFI_PROTOCOL_11B)
+		Serial.println("Protocol is WIFI_PROTOCOL_11B");
+	if ((current_protocol & WIFI_PROTOCOL_11G) == WIFI_PROTOCOL_11G)
+		Serial.println("Protocol is WIFI_PROTOCOL_11G");
+	if ((current_protocol & WIFI_PROTOCOL_11N) == WIFI_PROTOCOL_11N)
+		Serial.println("Protocol is WIFI_PROTOCOL_11N");
+	if ((current_protocol & WIFI_PROTOCOL_LR) == WIFI_PROTOCOL_LR)
+		Serial.println("Protocol is WIFI_PROTOCOL_LR");
+
+	return current_esp_interface;
+}
+
 void taskNetwork(void *pvParameters)
 {
 	int c = 0;
 	// chipid = ESP.getEfuseMac();
 	Serial.println("Task Network has been start");
+
+	// 	802.11 B     esp_wifi_set_protocol(ifx, WIFI_PROTOCOL_11B)
+	// 802.11 BG    esp_wifi_set_protocol(ifx, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G)
+	// 802.11 BGN   esp_wifi_set_protocol(ifx, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N)
+	// 802.11 BGNLR esp_wifi_set_protocol(ifx, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR)
+	// 802.11 LR    esp_wifi_set_protocol(ifx, WIFI_PROTOCOL_LR)
 	if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX)
 	{ // AP=false
 		// WiFi.mode(config.wifi_mode);
@@ -2096,6 +2144,25 @@ void taskNetwork(void *pvParameters)
 		delay(100);
 		Serial.println(F("WiFi OFF All mode."));
 	}
+
+	if(config.wifi_protocol!=1 && config.wifi_protocol!=3 && config.wifi_protocol!=7 ) config.wifi_protocol=7;
+	tcpip_adapter_get_esp_if(&current_esp_interface);
+	current_wifi_interface = current_esp_interface;
+	esp_wifi_set_protocol(current_wifi_interface, config.wifi_protocol);
+	esp_err_t error_code = esp_wifi_get_protocol(current_wifi_interface, &current_protocol);
+	// esp_err_to_name_r(error_code,error_buf1,100);
+	// Serial.print("esp_wifi_get_protocol error code: ");
+	// Serial.println(error_buf1);
+	Serial.print("Current protocol code is ");
+	Serial.println(current_protocol);
+	if ((current_protocol & WIFI_PROTOCOL_11B) == WIFI_PROTOCOL_11B)
+		Serial.println("Protocol is WIFI_PROTOCOL_11B");
+	if ((current_protocol & WIFI_PROTOCOL_11G) == WIFI_PROTOCOL_11G)
+		Serial.println("Protocol is WIFI_PROTOCOL_11G");
+	if ((current_protocol & WIFI_PROTOCOL_11N) == WIFI_PROTOCOL_11N)
+		Serial.println("Protocol is WIFI_PROTOCOL_11N");
+	if ((current_protocol & WIFI_PROTOCOL_LR) == WIFI_PROTOCOL_LR)
+		Serial.println("Protocol is WIFI_PROTOCOL_LR");
 
 	webService();
 	config.aprs = true;

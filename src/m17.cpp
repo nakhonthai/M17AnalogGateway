@@ -68,6 +68,7 @@ void readyReadM17()
 			Serial.println("DISCONNECT Host: " + udp.remoteIP().toString() + ":" + String(udp.remotePort()));
 			delay(500);
 			connect_status = DISCONNECTED;
+			m17ConectTimeout = millis();
 		}
 		if ((size == 4) && (memcmp(buf, "NACK", 4U) == 0))
 		{

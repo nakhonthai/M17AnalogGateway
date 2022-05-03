@@ -373,6 +373,7 @@ void handle_setting()
 {
 	bool wifiSTA = false;
 	bool wifiAP = false;
+	bool oledEN = false;
 
 	if (defaultSetting)
 	{
@@ -395,6 +396,17 @@ void handle_setting()
 				// Serial.print(server.argName(i));
 				// Serial.print("=");
 				// Serial.println(server.arg(i));
+				if (server.argName(i) == "oledEnable")
+				{
+					if (server.arg(i) != "")
+					{
+						if (String(server.arg(i)) == "OK")
+						{
+							oledEN = true;
+						}
+					}
+				}
+
 				if (server.argName(i) == "wifiAP")
 				{
 					if (server.arg(i) != "")
@@ -490,6 +502,15 @@ void handle_setting()
 							config.wifi_protocol = server.arg(i).toInt();
 					}
 				}
+
+				if (server.argName(i) == "oled_timeout")
+				{
+					if (server.arg(i) != "")
+					{
+						if (isValidNumber(server.arg(i)))
+							config.oled_timeout = server.arg(i).toInt();
+					}
+				}
 			}
 			if (wifiAP && wifiSTA)
 			{
@@ -507,6 +528,7 @@ void handle_setting()
 			{
 				config.wifi_mode = WIFI_OFF_FIX;
 			}
+			config.oled_enable = oledEN;
 			saveEEPROM();
 			WiFi.disconnect();
 			// #ifndef I2S_INTERNAL
@@ -538,6 +560,30 @@ void handle_setting()
 	webString += "</div>\n";
 
 	webString += "</div>\n<hr>\n"; // div general
+
+	webString += "<div class = \"col-pad\">\n<h3>OLED Display</h3>\n";
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">OLED Enable</label>\n";
+	String oledFlageEn = "";
+	if (config.oled_enable == true)
+		oledFlageEn = "checked";
+	webString += "<div class=\"col-sm-4 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_0\" name=\"oledEnable\" type=\"checkbox\" value=\"OK\" " + oledFlageEn + "/></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">OLED Sleep</label>\n";
+	webString += "<div class=\"col-sm-4 col-xs-6\"><select name=\"oled_timeout\" id=\"oled_timeout\">\n";
+	for (int i = 0; i < 600; i += 30)
+	{
+		if (config.oled_timeout == i)
+			webString += "<option value=\"" + String(i) + "\" selected>" + String(i) + " Sec</option>\n";
+		else
+			webString += "<option value=\"" + String(i) + "\" >" + String(i) + " Sec</option>\n";
+	}
+	webString += "</select></div>\n";
+	webString += "</div>\n";
+
+	webString += "</div>\n<hr>\n"; // div display
 
 	webString += "<div class = \"col-pad\">\n<h3>WiFi Network</h3>\n";
 	webString += "<div class=\"form-group\">\n";
@@ -580,24 +626,31 @@ void handle_setting()
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi Mode</label>\n";
 	webString += "<div class=\"col-sm-4 col-xs-6\"><select name=\"wifi_protocol\" id=\"wifi_protocol\">\n";
 
-		if (config.wifi_protocol == 7){
-			webString += "<option value=\"1\">IEEE 802.11b</option>\n";
-			webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
-			webString += "<option value=\"7\" selected>IEEE 802.11bgn</option>\n";
-		}else if (config.wifi_protocol == 3){
-			webString += "<option value=\"1\">IEEE 802.11b</option>\n";
-			webString += "<option value=\"3\" selected>IEEE 802.11bg</option>\n";
-			webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
-		}else if (config.wifi_protocol == 1){
-			webString += "<option value=\"1\" selected>IEEE 802.11b</option>\n";
-			webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
-			webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
-		}else{
-			config.wifi_protocol = 7;
-			webString += "<option value=\"1\" selected>IEEE 802.11b</option>\n";
-			webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
-			webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
-		}
+	if (config.wifi_protocol == 7)
+	{
+		webString += "<option value=\"1\">IEEE 802.11b</option>\n";
+		webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
+		webString += "<option value=\"7\" selected>IEEE 802.11bgn</option>\n";
+	}
+	else if (config.wifi_protocol == 3)
+	{
+		webString += "<option value=\"1\">IEEE 802.11b</option>\n";
+		webString += "<option value=\"3\" selected>IEEE 802.11bg</option>\n";
+		webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
+	}
+	else if (config.wifi_protocol == 1)
+	{
+		webString += "<option value=\"1\" selected>IEEE 802.11b</option>\n";
+		webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
+		webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
+	}
+	else
+	{
+		config.wifi_protocol = 7;
+		webString += "<option value=\"1\" selected>IEEE 802.11b</option>\n";
+		webString += "<option value=\"3\">IEEE 802.11bg</option>\n";
+		webString += "<option value=\"7\">IEEE 802.11bgn</option>\n";
+	}
 	webString += "</select></div>\n";
 	webString += "</div>\n";
 
@@ -729,6 +782,7 @@ void handle_service()
 {
 	bool noiseEn = false;
 	bool agcEn = false;
+	bool dtmfEn = false;
 	if (server.hasArg("commit"))
 	{
 		// #ifndef I2S_INTERNAL
@@ -764,6 +818,16 @@ void handle_service()
 					}
 				}
 			}
+			if (server.argName(i) == "dtmfCheck")
+			{
+				if (server.arg(i) != "")
+				{
+					if (String(server.arg(i)) == "OK")
+					{
+						dtmfEn = true;
+					}
+				}
+			}
 			if (server.argName(i) == "m17Name")
 			{
 				if (server.arg(i) != "")
@@ -792,7 +856,7 @@ void handle_service()
 				if (server.arg(i) != "")
 				{
 					config.reflector_module = server.arg(i).charAt(0);
-					current_module=config.reflector_module;
+					current_module = config.reflector_module;
 				}
 			}
 
@@ -883,6 +947,7 @@ void handle_service()
 		}
 		config.noise = noiseEn;
 		config.agc = agcEn;
+		config.dtmf = dtmfEn;
 		saveEEPROM();
 		// #ifndef I2S_INTERNAL
 		// 		if (adcIsr)
@@ -1030,6 +1095,14 @@ void handle_service()
 	if (config.agc)
 		agcFlage = "checked";
 	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_2\" name=\"agcCheck\" type=\"checkbox\" value=\"OK\" " + agcFlage + "/></div>\n";
+	webString += "</div>\n";
+
+	webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">DTMF</label>\n";
+	String dtmfFlage = "";
+	if (config.dtmf)
+		dtmfFlage = "checked";
+	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"field_checkbox\" id=\"dtmfCheck\" name=\"dtmfCheck\" type=\"checkbox\" value=\"OK\" " + dtmfFlage + "/></div>\n";
 	webString += "</div>\n";
 
 	webString += "</div>\n";
@@ -1322,7 +1395,7 @@ void handle_system()
 				if (server.arg(i) != "")
 				{
 					Serial.println("WEB Config NTP");
-					configTime(3600 * timeZone, 0, server.arg(i).c_str());
+					configTime(3600 * config.timeZone, 0, server.arg(i).c_str());
 				}
 				break;
 			}
@@ -1387,6 +1460,26 @@ void handle_system()
 			}
 		}
 	}
+	else if (server.hasArg("updateTimeZone"))
+	{
+		for (uint8_t i = 0; i < server.args(); i++)
+		{
+			// Serial.print("SERVER ARGS ");
+			// Serial.print(server.argName(i));
+			// Serial.print("=");
+			// Serial.println(server.arg(i));
+			if (server.argName(i) == "SetTimeZone")
+			{
+				if (server.arg(i) != "")
+				{
+					config.timeZone = atoi(server.arg(i).c_str());
+					// Serial.println("WEB Config NTP");
+					// configTime(3600 * timeZone, 0, server.arg(i).c_str());
+				}
+				break;
+			}
+		}
+	}
 
 	struct tm tmstruct;
 	char strTime[20];
@@ -1408,6 +1501,14 @@ void handle_system()
 	webString += "<td><label class=\"col-sm-2 col-xs-12 control-label\">Current</label></td>\n";
 	webString += "<td>" + String(strTime) + "</td>\n";
 	webString += "</div>\n</tr><tr>";
+
+	webString += "<form accept-charset=\"UTF-8\" action=\"/system\" class=\"form-horizontal\" id=\"time_form_zone\" method=\"post\">\n";
+	webString += "<div class=\"form-group\">\n";
+	webString += "<td><label class=\"col-sm-8 col-xs-12 control-label\">TIME Zone</label></td>\n";
+	webString += "<td><div class=\"col-sm-2 col-xs-4\" id='time_zone'><input class=\"form-control\" name=\"SetTimeZone\" type=\"text\" value=\"" + String(config.timeZone) + """\" />\n";
+	webString += "</div></td>\n";
+	webString += "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" name=\"updateTimeZone\" type=\"submit\" value=\"Update\" maxlength=\"80\"/></td>\n";
+	webString += "</div>\n</form>\n</tr><tr>\n";
 
 	webString += "<form accept-charset=\"UTF-8\" action=\"/system\" class=\"form-horizontal\" id=\"time_form\" method=\"post\">\n";
 	webString += "<div class=\"form-group\">\n";
@@ -1490,8 +1591,17 @@ void handle_firmware()
 	setHTML(5);
 
 	webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
-	webString += "<b>Current Hardware Version:</b> M17AnalogGateway\n<br/>";
-	webString += "<b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
+	webString += "<b>Current Hardware Version:</b> ESP32DR";
+	#ifdef SA818
+	#ifdef SR_FRS
+	webString += " <b>(MODEL:SR_FRS_1W)</b>";
+	#else
+	webString += " <b>(MODEL:SA818/SA868)</b>";
+	#endif
+	#else
+	webString += " <b>(MODEL: Simple)</b>";
+	#endif
+	webString += "<br /><b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
 	webString += "<b>Develop by:</b> HS5TQA\n<br />";
 	webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
 	webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";

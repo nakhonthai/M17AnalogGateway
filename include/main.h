@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.7d"
+#define VERSION "0.8"
 
 //#define DEBUG
 
@@ -43,8 +43,6 @@
 
 #define CODEC2_BUFF 800
 #define PCM_BUFF 4000
-
-const int timeZone = 7; // Bangkok
 
 #include <Arduino.h>
 // #include <FS.h>
@@ -122,6 +120,10 @@ typedef struct Config_Struct
 	bool rf_power;
 	#endif
 	uint8_t wifi_protocol;
+	bool dtmf;
+	bool oled_enable;
+	int oled_timeout;
+	int8_t timeZone;
 } Configuration;
 
 typedef struct pkgListStruct

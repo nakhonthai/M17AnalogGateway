@@ -119,6 +119,7 @@ int offset_new = 0, adc_count = 0;
 RTC_DATA_ATTR int sample;
 
 int idleTimeout = 0;
+int oledTimeout = 0;
 
 #ifdef I2S_INTERNAL
 #include "I2S.h"
@@ -293,7 +294,11 @@ void defaultConfig()
 	config.rf_power = LOW;
 	config.volume = 6;
 #endif
-	config.wifi_protocol=7;
+	config.wifi_protocol = 7;
+	config.dtmf = true;
+	config.oled_enable = true;
+	config.oled_timeout = 0;
+	config.timeZone=7;
 	saveEEPROM();
 }
 
@@ -405,44 +410,47 @@ void process_audio()
 				// if(mV>mVmax) mVmax=mV;
 			}
 
-			if (nochar_count < 100)
+			if (config.dtmf == true)
 			{
-				dtmf.detect(d_mags, audiof);
-				// If N=64 magnitude needs to be around 1200
-				// If N=128 the magnitude can be set to 1800
-				// but you will need to play with it to get the right value
-				char thischar = dtmf.button(d_mags, 2500);
-				if (thischar)
+				if (nochar_count < 100)
 				{
-					if (nochar_count == 0)
+					dtmf.detect(d_mags, audiof);
+					// If N=64 magnitude needs to be around 1200
+					// If N=128 the magnitude can be set to 1800
+					// but you will need to play with it to get the right value
+					char thischar = dtmf.button(d_mags, 2500);
+					if (thischar)
 					{
-						memset(dtmf_command, 0, sizeof(dtmf_command));
-						dtmf_idx = 0;
-					}
-					dtmf_command[dtmf_idx++] = thischar;
-					Serial.print(thischar);
-					nochar_count = 1;
-					if (dtmf_idx >= sizeof(dtmf_command))
-						nochar_count = 1000;
-						// Print the magnitudes for debugging
+						if (nochar_count == 0)
+						{
+							memset(dtmf_command, 0, sizeof(dtmf_command));
+							dtmf_idx = 0;
+						}
+						dtmf_command[dtmf_idx++] = thischar;
+						Serial.print(thischar);
+						nochar_count = 1;
+						if (dtmf_idx >= sizeof(dtmf_command))
+							nochar_count = 1000;
+							// Print the magnitudes for debugging
 //#define DEBUG_PRINT
 #ifdef DEBUG_PRINT
-					for (int i = 0; i < 8; i++)
-					{
-						Serial.print("  ");
-						Serial.print(d_mags[i]);
-					}
-					Serial.println("");
+						for (int i = 0; i < 8; i++)
+						{
+							Serial.print("  ");
+							Serial.print(d_mags[i]);
+						}
+						Serial.println("");
 #endif
-				}
-				else
-				{
-					// print a newline
-					//if (++nochar_count == 50)
-					//	Serial.println("");
-					// don't let it wrap around
-					if (++nochar_count > 100)
-						nochar_count = 100;
+					}
+					else
+					{
+						// print a newline
+						// if (++nochar_count == 50)
+						//	Serial.println("");
+						// don't let it wrap around
+						if (++nochar_count > 100)
+							nochar_count = 100;
+					}
 				}
 			}
 			//  dBu=20*log(mVrms/774.6);
@@ -595,52 +603,62 @@ void process_audio()
 	}
 	else
 	{
-		//Process DTMF after RX signal
-		if (dtmf_command[0] != 0)
+		// Process DTMF after RX signal
+		if (config.dtmf == true)
 		{
-			Serial.printf("DTMF: %s\n", dtmf_command);
-			switch (dtmf_command[0])
+			if (dtmf_command[0] != 0)
 			{
-			case '0':
-				linkToFlage = true;
-				break;
-			case '#':
-				//while(audioq.getCount()) delay(10);
-				disconnect_from_host();
-				break;
-			case '*':
-			{
-				if (dtmf_command[1] == 0)
+				Serial.printf("DTMF: %s\n", dtmf_command);
+				if (dtmf_command[0] == '#')
 				{
-					//while(audioq.getCount()) delay(10);
-					disconnect_from_host();
-					current_module = config.reflector_module;
+					switch (dtmf_command[1])
+					{
+					case '0':
+						linkToFlage = true;
+						break;
+					case '#':
+						// while(audioq.getCount()) delay(10);
+						disconnect_from_host();
+						break;
+					case '*':
+					{
+						if (dtmf_command[2] == 0)
+						{
+							// while(audioq.getCount()) delay(10);
+							disconnect_from_host();
+							current_module = config.reflector_module;
+							break;
+						}
+						uint8_t ch = 0;
+						ch = atoi(&dtmf_command[2]);
+						ch -= 1;
+						if (ch < 26)
+						{
+							// while(audioq.getCount()) delay(10);
+							disconnect_from_host();
+							char refmodule = 'A' + ch;
+							current_module = refmodule;
+						}
+						else if (ch == 199)
+						{
+							esp_restart();
+						}
+					}
 					break;
+					case 'A':
+						voicTx = true;
+						break;
+					case 'B':
+						voiceIPFlage = true;
+						break;
+					default:
+						break;
+					}
 				}
-				uint8_t ch = 0;
-				ch = atoi(&dtmf_command[1]);
-				ch -= 1;
-				if (ch < 26)
-				{
-					//while(audioq.getCount()) delay(10);
-					disconnect_from_host();
-					char refmodule = 'A' + ch;
-					current_module = refmodule;
-				}
+				memset(dtmf_command, 0, sizeof(dtmf_command));
+				dtmf_idx = 0;
+				return;
 			}
-			break;
-			case 'A':
-				voicTx = true;
-				break;
-			case 'B':
-				voiceIPFlage = true;
-				break;
-			default:
-				break;
-			}
-			memset(dtmf_command, 0, sizeof(dtmf_command));
-			dtmf_idx = 0;
-			return;
 		}
 
 		int packetSize = audioq.getCount();
@@ -667,7 +685,7 @@ void process_audio()
 				else
 					codec2_decode(codec2_3200, audio_in, c2Buf);
 
-				//if (config.agc)
+				// if (config.agc)
 				//{
 				short *audioIn = (short *)malloc(pcmWidth * sizeof(short));
 				if (audioIn != NULL)
@@ -724,7 +742,7 @@ void process_audio()
 					audio_in[x] = Amplify(audio_in[x], 150.0); // 64=x1
 #else
 					audio_in[x] = Amplify(audio_in[x], 50.0);
-					//audio_in[x] = (short)audio_in[x];
+					// audio_in[x] = (short)audio_in[x];
 #endif
 					// while (pcmq.isFull())
 					// 	delay(50);
@@ -969,7 +987,7 @@ void SA818_INIT(bool boot)
 	delay(500);
 	SerialRF.println("AT+SETFILTER=1,0,0");
 #endif
-	//SerialRF.println(str);
+	// SerialRF.println(str);
 	delay(500);
 	if (config.volume > 8)
 		config.volume = 8;
@@ -1218,13 +1236,22 @@ void setup()
 	pinMode(LED_RX, OUTPUT);
 	pinMode(LED_TX, OUTPUT);
 	pinMode(MIC_PIN, INPUT);
+	pinMode(39, INPUT_PULLDOWN);
+	pinMode(34, INPUT_PULLDOWN);
+	pinMode(35, INPUT_PULLDOWN);
+	pinMode(25, INPUT_PULLDOWN);
+	pinMode(23, INPUT_PULLDOWN);
+	pinMode(19, INPUT_PULLDOWN);
+	pinMode(18, INPUT_PULLDOWN);
+	pinMode(5, INPUT_PULLDOWN);
+	pinMode(15, INPUT_PULLDOWN);
 	digitalWrite(PTT_PIN, LOW);
 	digitalWrite(39, INPUT_PULLDOWN);
 	Serial.begin(115200);
 
 #ifdef OLED
 	Wire.begin();
-	Wire.setClock(400000L);
+	Wire.setClock(200000L);
 
 	// by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
 	display.begin(SSD1306_SWITCHCAPVCC, 0x3C, false); // initialize with the I2C addr 0x3C (for the 128x64)
@@ -1239,8 +1266,10 @@ void setup()
 	display.clearDisplay();
 	display.setTextSize(1);
 	display.setTextColor(WHITE);
+	display.setCursor(50, 30);
+	display.print("BOOT");
 	// topBar(-100);
-	//  display.display();
+	display.display();
 #endif
 
 #ifdef I2S_INTERNAL
@@ -1288,7 +1317,7 @@ void setup()
 	timerAlarmWrite(timer, 20, true);			// Interrupts when counter == 20, 8.000 times a second
 												// timerAlarmEnable(adcTimer); //Activate it
 	pinMode(26, OUTPUT);
-	ledcSetup(0, 128000, 8); //PWM 128KHz 8Bit
+	ledcSetup(0, 128000, 8); // PWM 128KHz 8Bit
 	ledcAttachPin(26, 0);
 #endif
 
@@ -1378,6 +1407,11 @@ void setup()
 
 #ifdef SA818
 	SA818_INIT(true);
+#endif
+#ifdef OLED
+	display.clearDisplay();
+	display.setTextSize(1);
+	display.display();
 #endif
 
 	enableLoopWDT();
@@ -1516,6 +1550,17 @@ void taskUI(void *pvParameters)
 #ifdef OLED
 		if (millis() > tickSec)
 		{
+			if (oledTimeout > 0)
+			{
+				idleTimeout = 1;
+				if (oledTimeout == 1)
+				{
+					idleTimeout = 0;
+					display.clearDisplay();
+					display.display();
+				}
+				oledTimeout--;
+			}
 			tickSec = millis() + 1000;
 			if (idleTimeout > 15)
 			{
@@ -1533,17 +1578,28 @@ void taskUI(void *pvParameters)
 					display.println(F("WiFi STA URL:"));
 					display.print(F("http://"));
 					display.println(WiFi.localIP());
+					#ifdef SA818
+					display.print(F("TX Freq: "));
+					display.println(String(config.freq_tx, 4));
+					display.print(F("RX Freq: "));
+					display.println(String(config.freq_rx, 4));
+					#endif
 				}
 			}
 			else if (idleTimeout == 10)
 			{
 				callLastDisp();
 			}
-			else if (idleTimeout == 1)
+			else if (idleTimeout == 2)
 			{
-				idleTimeout = 0;
-				display.clearDisplay();
-				display.display();
+				idleTimeout = 1;
+				oledTimeout = config.oled_timeout;
+				if (oledTimeout == 0)
+				{
+					idleTimeout = 0;
+					display.clearDisplay();
+					display.display();
+				}
 			}
 			if (idleTimeout > 0)
 			{
@@ -1664,78 +1720,84 @@ void taskUI(void *pvParameters)
 					nochar_count = 0;
 					// Serial.printf("Vox mic=%d vox=%d\n",mic_level,config.vox_level);
 #endif
-#ifdef OLED
 					Serial.println("<Start TX to Ref.>");
 					digitalWrite(PTT_PIN, LOW);
 					digitalWrite(LED_RX, HIGH);
 					digitalWrite(LED_TX, LOW);
-					display.fillRect(0, 16, 128, 48, BLACK);
+#ifdef OLED
+					if (config.oled_enable)
+					{
+						display.fillRect(0, 16, 128, 48, BLACK);
 
-					display.drawRect(0, 16, 128, 39, WHITE);
-					display.fillRect(101, 16, 28, 9, WHITE);
-					display.fillRect(0, 35, 21, 10, WHITE);
-					display.fillRect(75, 35, 20, 9, WHITE);
-					display.fillRect(0, 44, 13, 10, WHITE);
-					display.fillRect(64, 44, 13, 10, WHITE);
-					display.drawLine(101, 16, 101, 34, WHITE);
-					display.drawLine(0, 34, 128, 34, WHITE);
-					display.drawLine(0, 44, 128, 44, WHITE);
+						display.drawRect(0, 16, 128, 39, WHITE);
+						display.fillRect(101, 16, 28, 9, WHITE);
+						display.fillRect(0, 35, 21, 10, WHITE);
+						display.fillRect(75, 35, 20, 9, WHITE);
+						display.fillRect(0, 44, 13, 10, WHITE);
+						display.fillRect(64, 44, 13, 10, WHITE);
+						display.drawLine(101, 16, 101, 34, WHITE);
+						display.drawLine(0, 34, 128, 34, WHITE);
+						display.drawLine(0, 44, 128, 44, WHITE);
 
-					display.setTextColor(BLACK);
-					display.setCursor(103, 17);
-					display.print("SSID");
-					display.setCursor(1, 36);
-					display.print("TYP");
-					display.setCursor(76, 36);
-					display.print("PKG");
-					display.setCursor(1, 46);
-					display.print("R1");
-					display.setCursor(65, 46);
-					display.print("R2");
+						display.setTextColor(BLACK);
+						display.setCursor(103, 17);
+						display.print("SSID");
+						display.setCursor(1, 36);
+						display.print("TYP");
+						display.setCursor(76, 36);
+						display.print("PKG");
+						display.setCursor(1, 46);
+						display.print("R1");
+						display.setCursor(65, 46);
+						display.print("R2");
 
-					display.fillRect(2, 19, 3, 12, WHITE);
-					display.drawCircle(9, 25, 6, WHITE);
-					display.setTextColor(WHITE);
-					display.setCursor(20, 18);
-					display.setTextSize(2);
-					display.print(config.mycall);
-					display.setTextSize(1);
-					display.setCursor(108, 26);
-					display.print(String(config.mymodule));
-					display.setCursor(23, 36);
-					if (config.codec2_mode == CODEC2_MODE_3200)
-						display.print("3200 F/R");
-					else
-						display.print("1600 V/D");
-					display.setCursor(100, 36);
-					display.print(String(txstreamid, HEX));
+						display.fillRect(2, 19, 3, 12, WHITE);
+						display.drawCircle(9, 25, 6, WHITE);
+						display.setTextColor(WHITE);
+						display.setCursor(20, 18);
+						display.setTextSize(2);
+						display.print(config.mycall);
+						display.setTextSize(1);
+						display.setCursor(108, 26);
+						display.print(String(config.mymodule));
+						display.setCursor(23, 36);
+						if (config.codec2_mode == CODEC2_MODE_3200)
+							display.print("3200 F/R");
+						else
+							display.print("1600 V/D");
+						display.setCursor(100, 36);
+						display.print(String(txstreamid, HEX));
 
-					display.setCursor(15, 46);
-					display.print(String(config.reflector_name));
+						display.setCursor(15, 46);
+						display.print(String(config.reflector_name));
 
-					display.setCursor(79, 46);
-					display.print("-");
-					// display.println(((String)urCall).substring(0, 6)+"-"+urCall.substring(urCall.length() - 1, urCall.length()));
+						display.setCursor(79, 46);
+						display.print("-");
+						// display.println(((String)urCall).substring(0, 6)+"-"+urCall.substring(urCall.length() - 1, urCall.length()));
 
-					display.setCursor(0, 56);
-					display.print("SND");
-					display.drawRect(20, 56, 100, 8, WHITE);
+						display.setCursor(0, 56);
+						display.print("SND");
+						display.drawRect(20, 56, 100, 8, WHITE);
+					}
 #endif
 				}
 #ifdef OLED
-				i = ppm_Level >> 6;
+				if (config.oled_enable)
+				{
+					i = ppm_Level >> 6;
 
-				if (i > 99)
-					i = 99;
-				if (i < 1)
-					i = 1;
-				display.fillRect(20, 56, i, 8, WHITE);
-				display.fillRect(i + 20, 57, 99 - i, 6, BLACK);
-				// for (i; i >0; i--) display.print(">");
-				// display.setCursor(80, 56);
-				// display.print(i);
-				// display.print("dBV");
-				display.display();
+					if (i > 99)
+						i = 99;
+					if (i < 1)
+						i = 1;
+					display.fillRect(20, 56, i, 8, WHITE);
+					display.fillRect(i + 20, 57, 99 - i, 6, BLACK);
+					// for (i; i >0; i--) display.print(">");
+					// display.setCursor(80, 56);
+					// display.print(i);
+					// display.print("dBV");
+					display.display();
+				}
 #endif
 				tx = true;
 				idleTimeout = 15;
@@ -1825,57 +1887,60 @@ void taskUI(void *pvParameters)
 					info += "\nStreamID: " + String(streamid);
 					Serial.println(info);
 #ifdef OLED
-					display.fillRect(0, 16, 128, 48, BLACK); // Clear Screen
+					if (config.oled_enable)
+					{
+						display.fillRect(0, 16, 128, 48, BLACK); // Clear Screen
 
-					display.drawRect(0, 16, 128, 39, WHITE);
-					display.fillRect(101, 16, 28, 9, WHITE);
-					display.fillRect(0, 35, 21, 10, WHITE);
-					display.fillRect(75, 35, 20, 9, WHITE);
-					display.fillRect(0, 44, 13, 10, WHITE);
-					display.fillRect(64, 44, 13, 10, WHITE);
-					display.drawLine(101, 16, 101, 34, WHITE);
-					display.drawLine(0, 34, 128, 34, WHITE);
-					display.drawLine(0, 44, 128, 44, WHITE);
+						display.drawRect(0, 16, 128, 39, WHITE);
+						display.fillRect(101, 16, 28, 9, WHITE);
+						display.fillRect(0, 35, 21, 10, WHITE);
+						display.fillRect(75, 35, 20, 9, WHITE);
+						display.fillRect(0, 44, 13, 10, WHITE);
+						display.fillRect(64, 44, 13, 10, WHITE);
+						display.drawLine(101, 16, 101, 34, WHITE);
+						display.drawLine(0, 34, 128, 34, WHITE);
+						display.drawLine(0, 44, 128, 44, WHITE);
 
-					// display.drawRect(0, 16, 128, 21, WHITE); //RPT RECT
-					display.setTextColor(BLACK);
-					display.setCursor(103, 17);
-					display.print("SSID");
-					display.setCursor(1, 36);
-					display.print("TYP");
-					display.setCursor(76, 36);
-					display.print("PKG");
-					display.setCursor(1, 46);
-					display.print("R1");
-					display.setCursor(65, 46);
-					display.print("R2");
+						// display.drawRect(0, 16, 128, 21, WHITE); //RPT RECT
+						display.setTextColor(BLACK);
+						display.setCursor(103, 17);
+						display.print("SSID");
+						display.setCursor(1, 36);
+						display.print("TYP");
+						display.setCursor(76, 36);
+						display.print("PKG");
+						display.setCursor(1, 46);
+						display.print("R1");
+						display.setCursor(65, 46);
+						display.print("R2");
 
-					display.fillRect(2, 22, 5, 8, WHITE);
-					display.drawLine(12, 18, 12, 32, WHITE);
-					display.drawLine(7, 22, 12, 18, WHITE);
-					display.drawLine(7, 30, 12, 32, WHITE);
-					display.setTextColor(WHITE);
-					display.setCursor(20, 18);
-					display.setTextSize(2);
-					display.println(srcCall.substring(0, srcCall.length() - 1));
-					display.setTextSize(1);
+						display.fillRect(2, 22, 5, 8, WHITE);
+						display.drawLine(12, 18, 12, 32, WHITE);
+						display.drawLine(7, 22, 12, 18, WHITE);
+						display.drawLine(7, 30, 12, 32, WHITE);
+						display.setTextColor(WHITE);
+						display.setCursor(20, 18);
+						display.setTextSize(2);
+						display.println(srcCall.substring(0, srcCall.length() - 1));
+						display.setTextSize(1);
 
-					display.setCursor(110, 26);
-					display.print(srcCall.substring(srcCall.length() - 1, srcCall.length()));
+						display.setCursor(110, 26);
+						display.print(srcCall.substring(srcCall.length() - 1, srcCall.length()));
 
-					display.setCursor(23, 36);
-					display.println(rptr1.substring(0, 8));
-					display.setCursor(100, 36);
-					display.print(String(streamid, HEX));
-					display.setCursor(15, 46);
-					display.print(String(config.reflector_name));
-					display.setCursor(79, 46);
-					display.println(((String)urCall).substring(0, 6) + "-" + urCall.substring(urCall.length() - 1, urCall.length()));
+						display.setCursor(23, 36);
+						display.println(rptr1.substring(0, 8));
+						display.setCursor(100, 36);
+						display.print(String(streamid, HEX));
+						display.setCursor(15, 46);
+						display.print(String(config.reflector_name));
+						display.setCursor(79, 46);
+						display.println(((String)urCall).substring(0, 6) + "-" + urCall.substring(urCall.length() - 1, urCall.length()));
 
-					display.setCursor(0, 56);
-					display.print("SND");
-					display.drawRect(20, 56, 100, 8, WHITE);
-					display.display();
+						display.setCursor(0, 56);
+						display.print("SND");
+						display.drawRect(20, 56, 100, 8, WHITE);
+						display.display();
+					}
 #ifndef I2S_INTERNAL
 					ledcWrite(0, 128);
 					timerAlarmEnable(timer);
@@ -2145,7 +2210,8 @@ void taskNetwork(void *pvParameters)
 		Serial.println(F("WiFi OFF All mode."));
 	}
 
-	if(config.wifi_protocol!=1 && config.wifi_protocol!=3 && config.wifi_protocol!=7 ) config.wifi_protocol=7;
+	if (config.wifi_protocol != 1 && config.wifi_protocol != 3 && config.wifi_protocol != 7)
+		config.wifi_protocol = 7;
 	tcpip_adapter_get_esp_if(&current_esp_interface);
 	current_wifi_interface = current_esp_interface;
 	esp_wifi_set_protocol(current_wifi_interface, config.wifi_protocol);
@@ -2265,7 +2331,7 @@ void taskNetwork(void *pvParameters)
 						NTP_Timeout = millis() + 86400000;
 						// Serial.println(F("Config NTP"));
 						// setSyncProvider(getNtpTime);
-						configTime(3600 * timeZone, 0, "203.150.19.19", "203.150.19.26");
+						configTime(3600 * config.timeZone, 0, "203.150.19.19", "203.150.19.26");
 						// topBar(WiFi.RSSI());
 						vTaskDelay(3000 / portTICK_PERIOD_MS);
 						if (systemUptime == 0)
@@ -2349,10 +2415,10 @@ void sendVoice(char *text)
 	audioq.clean();
 	pcmq.clean();
 	audioq.flush();
-	//linkedTo(text);
+	// linkedTo(text);
 	RxTimeout = millis() + 30000;
 	timerAlarmEnable(timer);
-	//sprintf(text, "a  b  c  d  l  n  g  y");
+	// sprintf(text, "a  b  c  d  l  n  g  y");
 	Serial.println(text);
 	createVoice(text);
 	while (!pcmq.isEmpty())
@@ -2363,10 +2429,10 @@ void sendVoice(char *text)
 	}
 	RxTimeout = 0;
 
-	//audioq.clean();
-	//pcmq.clean();
-	// firstRX = false;
-	// firstIdle = true;
+	// audioq.clean();
+	// pcmq.clean();
+	//  firstRX = false;
+	//  firstIdle = true;
 	Serial.println("<VOICE END>");
 #ifdef SA818
 	digitalWrite(POWER_PIN, LOW);

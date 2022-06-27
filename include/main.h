@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.8"
+#define VERSION "0.9"
 
 //#define DEBUG
 
@@ -14,7 +14,7 @@
 
 #ifdef SR_FRS
 #ifndef SA818
-	#define SA818
+#define SA818
 #endif
 #endif
 
@@ -22,7 +22,7 @@
 
 // #define MUTEX_LOCK()    do {} while (xSemaphoreTake(NULL, portMAX_DELAY) != pdPASS)
 // #define MUTEX_UNLOCK()  xSemaphoreGive(NULL)
-//xSemaphoreHandle _ledc_sys_lock = NULL;
+// xSemaphoreHandle _ledc_sys_lock = NULL;
 
 #define WIFI_OFF_FIX 0
 #define WIFI_AP_FIX 1
@@ -73,10 +73,10 @@ typedef struct Config_Struct
 {
 	char id[20];
 	bool wifi_client;
-	char wifi_ssid[20];
-	char wifi_pass[15];
-	char wifi_ap_ssid[20];
-	char wifi_ap_pass[15];
+	char wifi_ssid[32];
+	char wifi_pass[64];
+	char wifi_ap_ssid[32];
+	char wifi_ap_pass[64];
 	char wifi_power;
 	bool aprs;
 	char aprs_mycall[10];
@@ -97,7 +97,7 @@ typedef struct Config_Struct
 	float gps_lon;
 	float gps_alt;
 	bool wifi;
-	char wifi_mode; //WIFI_AP,WIFI_STA,WIFI_AP_STA,WIFI_OFF
+	char wifi_mode; // WIFI_AP,WIFI_STA,WIFI_AP_STA,WIFI_OFF
 	char wifi_ch;
 	uint8_t volume;
 	uint8_t mic;
@@ -108,7 +108,7 @@ typedef struct Config_Struct
 	int codec2_mode;
 	bool noise;
 	bool agc;
-	#ifdef SA818
+#ifdef SA818
 	float freq_rx;
 	float freq_tx;
 	int offset_rx;
@@ -118,12 +118,21 @@ typedef struct Config_Struct
 	uint8_t band;
 	uint8_t sql_level;
 	bool rf_power;
-	#endif
+#endif
 	uint8_t wifi_protocol;
 	bool dtmf;
 	bool oled_enable;
 	int oled_timeout;
 	int8_t timeZone;
+	bool vpn;
+	bool modem;
+	uint16_t wg_port;
+	char wg_peer_address[16];
+	char wg_local_address[16];
+	char wg_netmask_address[16];
+	char wg_gw_address[16];
+	char wg_public_key[45];
+	char wg_private_key[45];
 } Configuration;
 
 typedef struct pkgListStruct
@@ -135,7 +144,6 @@ typedef struct pkgListStruct
 	bool type;
 	uint8_t symbol;
 } pkgListType;
-
 
 void saveEEPROM();
 void defaultConfig();

@@ -16,6 +16,7 @@
 #include "esp_adc_cal.h"
 #include "esp_system.h"
 #include "resampling.h"
+#include "esp_vad.h"
 
 #include <WiFiClientSecure.h>
 #include <ESP32Ping.h>
@@ -23,6 +24,10 @@
 #include <ctype.h>			   // for isNumber check
 #include <ButterworthFilter.h> //In the codec2 folder in the library folder
 #include <PubSubClient.h>
+
+#include "wireguardif.h"
+#include "wireguard.h"
+#include "wireguard_vpn.h"
 
 #include <time.h>
 #include <TimeLib.h>
@@ -129,6 +134,7 @@ void *agc_handle = esp_agc_open(3, 8000); // Mode 3,Sample 8KHz
 #endif
 
 ns_handle_t ns_inst; // = ns_create(NS_FRAME_LENGTH_MS);
+vad_handle_t vad_inst;
 // vad_handle_t vad_inst;					  // = vad_create(VAD_MODE_4, SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
 // aec_handle_t aec_inst;
 
@@ -141,7 +147,7 @@ const int natural = 1;
 //กรองความถี่สูงผ่าน >300Hz  HPF Butterworth Filter. 0-300Hz ช่วงความถี่ต่ำใช้กับโทน CTCSS/DCS ในวิทยุสื่อสารจะถูกรองทิ้ง
 ButterworthFilter hp_filter(300, 8000, ButterworthFilter::ButterworthFilter::Highpass, 1);
 //กรองความถี่ต่ำผ่าน <3.5KHz  LPF Butterworth Filter. ความถี่เสียงที่มากกว่า 3KHz ไม่ใช่ความถี่เสียงคนพูดจะถูกกรองทิ้ง
-ButterworthFilter lp_filter(3500, 8000, ButterworthFilter::ButterworthFilter::Lowpass, 2);
+ButterworthFilter lp_filter(4000, 8000, ButterworthFilter::ButterworthFilter::Lowpass, 1);
 #ifdef I2S_INTERNAL
 ButterworthFilter hp16K_filter(300, 16000, ButterworthFilter::ButterworthFilter::Highpass, 1);
 ButterworthFilter lp16K_filter(4000, 16000, ButterworthFilter::ButterworthFilter::Lowpass, 1);
@@ -178,6 +184,8 @@ int nsam, nbit, nbyte, i, frames, bits_proc, bit_errors, error_mode;
 String srcCall, mycall, urCall, rptr1;
 
 // SPIClass spiSD(HSPI);
+
+WiFiClient aprsClient;
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
@@ -254,7 +262,7 @@ void defaultConfig()
 	sprintf(config.id, "M17AG");
 	sprintf(config.wifi_ssid, "APRSTH");
 	sprintf(config.wifi_pass, "aprsthnetwork");
-	sprintf(config.wifi_ap_ssid, "M17Analog");
+	sprintf(config.wifi_ap_ssid, "M17AGate");
 	config.wifi_ap_pass[0] = 0;
 	config.wifi_power = 44;
 	//	sprintf(config.wifi_ap_pass, "");
@@ -298,7 +306,16 @@ void defaultConfig()
 	config.dtmf = true;
 	config.oled_enable = true;
 	config.oled_timeout = 0;
-	config.timeZone=7;
+	config.vpn = false;
+	config.modem = false;
+	config.wg_port = 51820;
+	sprintf(config.wg_peer_address, "203.150.19.23");
+	sprintf(config.wg_local_address, "44.63.31.223");
+	sprintf(config.wg_netmask_address, "255.255.255.255");
+	sprintf(config.wg_gw_address, "44.63.31.193");
+	sprintf(config.wg_public_key, "");
+	sprintf(config.wg_private_key, "");
+	config.timeZone = 7;
 	saveEEPROM();
 }
 
@@ -502,6 +519,11 @@ void process_audio()
 
 					free(audioIn);
 				}
+				else
+				{
+					for (int i = 0; i < pcmWidth; i++)
+						audio_in[i] = (int16_t)audiof[i];
+				}
 
 				short *audio_out = (short *)malloc(pcmWidth * sizeof(short) * 2);
 				short *audio_buf = (short *)malloc(pcmWidth * sizeof(short) * 2);
@@ -512,7 +534,14 @@ void process_audio()
 					memset(&audio_out[0], 0, pcmWidth * 2);																					// 3200 F/R mode
 					audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 160, 320, 1, &resample); // Change Sample rate 8Khz->16Khz
 					memset(&audio_buf[0], 0, pcmWidth * 2);
+					// vad_state_t vad_state = vad_process(vad_inst, audio_out);
+					if (vad_process(vad_inst, audio_out) == VAD_SILENCE)
+						memset(&audio_out[0], 0, 160);
 					ns_process(ns_inst, audio_out, audio_buf);
+					// vad_state_t vad_state2= vad_process(vad_inst, &audio_out[160]);
+					if (vad_process(vad_inst, &audio_out[160]) == VAD_SILENCE)
+						memset(&audio_out[160], 0, 160);
+					ns_process(ns_inst, &audio_out[160], &audio_buf[160]);
 					memset(&audio_in[0], 0, pcmWidth);
 					audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 320, 160, 1, &resample); // Change Sample rate 16Khz->8Khz
 				}
@@ -522,7 +551,9 @@ void process_audio()
 					audio_resample((short *)&audio_in[0], (short *)&audio_out[0], SAMPLE_RATE_CODEC2, SAMPLE_RATE, 320, 640, 1, &resample); // Change Sample rate 8Khz->16Khz
 					memset(&audio_buf[0], 0, pcmWidth * 2);
 					ns_process(ns_inst, &audio_out[0], &audio_buf[0]);
+					ns_process(ns_inst, &audio_out[160], &audio_buf[160]);
 					ns_process(ns_inst, &audio_out[320], &audio_buf[320]);
+					ns_process(ns_inst, &audio_out[480], &audio_buf[480]);
 					memset(&audio_in[0], 0, pcmWidth);
 					audio_resample((short *)&audio_buf[0], (short *)&audio_in[0], SAMPLE_RATE, SAMPLE_RATE_CODEC2, 640, 320, 1, &resample); // Change Sample rate 16Khz->8Khz
 				}
@@ -530,26 +561,27 @@ void process_audio()
 				{
 					// audio_in[i]=Amplify(audio_in[i],512.0);
 					audiof[i] = (float)audio_in[i];
-					// if (abs(audio_in[i]) > 5000)
-					// {
-					// audiof[i] = (float)audio_in[i];
-					// }
-					// else
-					// {
-					// 	// if(abs(adcR)>1000) adcR=(int16_t)(adcR+adc)/2;
-					// 	audiof[i] = (float)((audio_in[i] * 16383) >> 14);
-					// }
-					// LMS.pushInput(audio_in[i]);
-					// if (abs(audio_in[i]) < 3000)
-					// {
-					// 	LMS.pushNoise(audio_in[i]);
-					// }
-					// audiof[i] = (float)LMS.pullOutput();
+					// if(abs(audiof[i])<200) audiof[i]=0;
+					//  if (abs(audio_in[i]) > 5000)
+					//  {
+					//  audiof[i] = (float)audio_in[i];
+					//  }
+					//  else
+					//  {
+					//  	// if(abs(adcR)>1000) adcR=(int16_t)(adcR+adc)/2;
+					//  	audiof[i] = (float)((audio_in[i] * 16383) >> 14);
+					//  }
+					//  LMS.pushInput(audio_in[i]);
+					//  if (abs(audio_in[i]) < 3000)
+					//  {
+					//  	LMS.pushNoise(audio_in[i]);
+					//  }
+					//  audiof[i] = (float)LMS.pullOutput();
 				}
 
 				free(audio_out);
 				free(audio_buf);
-				// bp_filter(audiof, pcmWidth);
+				bp_filter(audiof, pcmWidth);
 			}
 
 			if (config.agc)
@@ -763,6 +795,7 @@ void process_audio()
 hw_timer_t *timer = NULL;
 
 int offset_count = 0;
+int adcR_old = 0;
 // RTC_DATA_ATTR float adcf;
 //แซมปลิ้งเสียง 8,000 ครั้งต่อวินาที ทั้งเข้า ADC และออก DAC
 #ifndef I2S_INTERNAL
@@ -817,18 +850,26 @@ void IRAM_ATTR onTime()
 
 		// Reduce noise floor ground
 		int adc = sample - offset;
+		// adcR=((int16_t)adc+adcR)/2;
+		// if(abs(adcR)<200) adcR=0;
+
+		// adcR = (int16_t)(adc+adcR_old)/2;
+		// adcR_old=adcR;
+		// if(abs(adc)>500)
+		adcR = (int16_t)adc;
+
 		// if (!config.noise)
 		// {
-		// 	LMS.pushInput(adc);
-		// 	if (ppm_Level < 500)
-		// 	{
-		// 		LMS.pushNoise(adc);
-		// 	}
-		// 	adcR = (int16_t)LMS.pullOutput();
+		// LMS.pushInput(adc);
+		// if (ppm_Level < 500)
+		// {
+		// 	LMS.pushNoise(adc);
+		// }
+		// adcR = (int16_t)LMS.pullOutput();
 		// }
 		// else
 		// {
-		adcR = (int16_t)adc;
+		// adcR = (int16_t)adc;
 		//}
 
 		if (tx)
@@ -978,7 +1019,7 @@ void SA818_INIT(bool boot)
 	delay(500);
 	SerialRF.println("AT+DMOSETVOX=0");
 	delay(500);
-	SerialRF.println("AT+DMOSETMIC=2,0,0");
+	SerialRF.println("AT+DMOSETMIC=8,0,0");
 #else
 	sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", config.band, config.freq_tx + ((float)config.offset_tx / 1000000), config.freq_rx + ((float)config.offset_rx / 1000000), config.tone_tx, config.sql_level, config.tone_rx);
 	SerialRF.println(str);
@@ -1225,6 +1266,103 @@ void topBar(int ws)
 }
 #endif
 
+#define kKey 0x73e2 // This is the key for the data
+
+short aprs_passcode(const char *theCall)
+{
+	char rootCall[10]; // need to copy call to remove ssid from parse
+	char *p1 = rootCall;
+
+	while ((*theCall != '-') && (*theCall != 0) && (p1 < rootCall + 9))
+		*p1++ = toupper(*theCall++);
+
+	*p1 = 0;
+
+	short hash = kKey; // Initialize with the key value
+	short i = 0;
+	short len = strlen(rootCall);
+	char *ptr = rootCall;
+
+	while (i < len)
+	{						   // Loop through the string two bytes at a time
+		hash ^= (*ptr++) << 8; // xor high byte with accumulated hash
+		hash ^= (*ptr++);	   // xor low byte with accumulated hash
+		i += 2;
+	}
+
+	return hash & 0x7fff; // mask off the high bit so number is always positive
+}
+
+boolean APRSConnect()
+{
+	// Serial.println("Connect TCP Server");
+	String login = "";
+	int cnt = 0;
+	uint8_t con = aprsClient.connected();
+	// Serial.println(con);
+	if (con <= 0)
+	{
+		if (!aprsClient.connect(config.aprs_host, config.aprs_port)) //เชื่อมต่อกับเซิร์ฟเวอร์ TCP
+		{
+			// Serial.print(".");
+			delay(100);
+			cnt++;
+			if (cnt > 50) //วนร้องขอการเชื่อมต่อ 50 ครั้ง ถ้าไม่ได้ให้รีเทิร์นฟังค์ชั่นเป็น False
+				return false;
+		}
+		short pass = aprs_passcode(config.mycall);
+		//ขอเชื่อมต่อกับ aprsc
+		// if (config.aprs_ssid == 0)
+		//     login = "user " + String(config.aprs_ycall) + " pass " + String(pass) + " vers M17AGate V" + String(VERSION) + " filter m/1";
+		// else
+		login = "user " + String(config.mycall) + "-" + String(config.mymodule) + " pass " + String(pass) + " vers M17AGate V" + String(VERSION) + " filter m/1";
+		aprsClient.println(login);
+		// Serial.println(login);
+		// Serial.println("Success");
+		delay(500);
+	}
+	return true;
+}
+
+void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS)
+{
+
+	*DD = (int)DD_DDDDD;					   //сделали из 37.45545 это 37 т.е. Градусы
+	*MM = (int)((DD_DDDDD - *DD) * 60);		   //получили минуты
+	*SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100; //получили секунды
+}
+
+String send_fix_location()
+{
+	String tnc2Raw = "";
+	int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
+	char loc[50];
+	DD_DDDDDtoDDMMSS(config.gps_lat, &lat_dd, &lat_mm, &lat_ss);
+	DD_DDDDDtoDDMMSS(config.gps_lon, &lon_dd, &lon_mm, &lon_ss);
+	sprintf(loc, "%s-%c>APM17:=%02d%02d.%02dNM%03d%02d.%02dEa", config.mycall, config.mymodule, lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss);
+
+	tnc2Raw = String(loc);
+#ifdef SA818
+	if (config.freq_tx == config.freq_rx)
+		tnc2Raw += String("Freq: " + String(config.freq_tx, 4) + "Mhz ");
+	else
+		tnc2Raw += String("Freq TX:" + String(config.freq_tx, 4) + "Mhz,RX:" + String(config.freq_rx, 4) + "Mhz ");
+	if (config.tone_tx > 0 || config.tone_rx > 0)
+		tnc2Raw += String("CTCSS: ");
+	if (config.tone_tx == config.tone_rx)
+		tnc2Raw += String(String(ctcss[config.tone_tx], 1) + "Hz ");
+	else
+	{
+		if (config.tone_tx > 0)
+			tnc2Raw += String("TX:" + String(ctcss[config.tone_tx], 1) + ",");
+		if (config.tone_rx > 0)
+			tnc2Raw += String("RX:" + String(ctcss[config.tone_rx], 1) + " ");
+	}
+#endif
+	tnc2Raw += String("Ref: " + String(config.reflector_name) + "[" + String(config.reflector_module) + "]");
+	return tnc2Raw;
+}
+
 void setup()
 {
 	int mode;
@@ -1236,22 +1374,22 @@ void setup()
 	pinMode(LED_RX, OUTPUT);
 	pinMode(LED_TX, OUTPUT);
 	pinMode(MIC_PIN, INPUT);
-	pinMode(39, INPUT_PULLDOWN);
-	pinMode(34, INPUT_PULLDOWN);
-	pinMode(35, INPUT_PULLDOWN);
-	pinMode(25, INPUT_PULLDOWN);
-	pinMode(23, INPUT_PULLDOWN);
-	pinMode(19, INPUT_PULLDOWN);
-	pinMode(18, INPUT_PULLDOWN);
-	pinMode(5, INPUT_PULLDOWN);
-	pinMode(15, INPUT_PULLDOWN);
+	pinMode(39, INPUT);
+	pinMode(34, INPUT);
+	pinMode(35, INPUT);
+	pinMode(25, INPUT);
+	pinMode(23, INPUT);
+	pinMode(19, INPUT);
+	pinMode(18, INPUT);
+	pinMode(5, INPUT);
+	pinMode(15, INPUT);
 	digitalWrite(PTT_PIN, LOW);
 	digitalWrite(39, INPUT_PULLDOWN);
 	Serial.begin(115200);
 
 #ifdef OLED
 	Wire.begin();
-	Wire.setClock(200000L);
+	Wire.setClock(100000L);
 
 	// by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
 	display.begin(SSD1306_SWITCHCAPVCC, 0x3C, false); // initialize with the I2C addr 0x3C (for the 128x64)
@@ -1377,8 +1515,11 @@ void setup()
 											 // aec_inst = aec_create(AEC_SAMPLE_RATE, AEC_FRAME_LENGTH_MS, AEC_FILTER_LENGTH);
 											 // set_agc_config(agc_handle, 10, 1, -3);
 #else
-	ns_inst = ns_create(20); // 10ms at 160sample,16Khz sample rate
+	// ns_inst = ns_create(20); // 10ms at 160sample,16Khz sample rate
+	ns_inst = ns_pro_create(10, 1);
 #endif
+
+	vad_inst = vad_create(VAD_MODE_3, SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS); // Creates an instance to the VAD structure.
 
 	// Init codec2
 	mode = CODEC2_MODE_1600;
@@ -1402,7 +1543,7 @@ void setup()
 
 	codec2_set_natural_or_gray(codec2_3200, !natural);
 	// codec2_set_lpc_post_filter(codec2_3200, 1, 0, 0.9, 0.3);
-	codec2_set_lpc_post_filter(codec2_3200, 1, 0, 0.9, 0.3);
+	codec2_set_lpc_post_filter(codec2_3200, 1, 0, 1.0, 0.8);
 	Serial.printf("Create CODEC2_3200 : nsam=%d ,nbit=%d ,nbyte=%d\n", nsam, nbit, nbyte);
 
 #ifdef SA818
@@ -1421,7 +1562,7 @@ void setup()
 	xTaskCreatePinnedToCore(
 		taskNetwork,		/* Function to implement the task */
 		"taskNetwork",		/* Name of the task */
-		16384,				/* Stack size in words */
+		8192,				/* Stack size in words */
 		NULL,				/* Task input parameter */
 		1,					/* Priority of the task */
 		&taskNetworkHandle, /* Task handle. */
@@ -1438,7 +1579,7 @@ void setup()
 	xTaskCreatePinnedToCore(
 		taskUI,		   /* Function to implement the task */
 		"taskUI",	   /* Name of the task */
-		8192,		   /* Stack size in words */
+		4096,		   /* Stack size in words */
 		NULL,		   /* Task input parameter */
 		2,			   /* Priority of the task */
 		&taskUIHandle, /* Task handle. */
@@ -1578,12 +1719,12 @@ void taskUI(void *pvParameters)
 					display.println(F("WiFi STA URL:"));
 					display.print(F("http://"));
 					display.println(WiFi.localIP());
-					#ifdef SA818
+#ifdef SA818
 					display.print(F("TX Freq: "));
 					display.println(String(config.freq_tx, 4));
 					display.print(F("RX Freq: "));
 					display.println(String(config.freq_rx, 4));
-					#endif
+#endif
 				}
 			}
 			else if (idleTimeout == 10)
@@ -2169,6 +2310,7 @@ esp_interface_t check_protocol()
 void taskNetwork(void *pvParameters)
 {
 	int c = 0;
+	uint aprsFixLocTimeout = 0;
 	// chipid = ESP.getEfuseMac();
 	Serial.println("Task Network has been start");
 
@@ -2253,6 +2395,8 @@ void taskNetwork(void *pvParameters)
 
 					WiFi.setTxPower((wifi_power_t)config.wifi_power);
 					WiFi.begin(config.wifi_ssid, config.wifi_pass);
+					if (config.vpn)
+						wireguard_remove();
 					// Wait up to 1 minute for connection...
 					for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++)
 					{
@@ -2293,72 +2437,139 @@ void taskNetwork(void *pvParameters)
 			{
 				if (config.aprs)
 				{
-					if (connect_status == DISCONNECTED)
+					if (aprsClient.connected() == false)
 					{
-						// if (millis() > (m17ConectTimeout + 10000))
-						// {
-
-						Serial.printf("M17 Connecting to %s[%c]\n", config.reflector_host, current_module);
-						process_connect();
-#ifndef I2S_INTERNAL
-						timerAlarmEnable(timer); // Start sample audio when M17 First Connected.
-#endif
-						// 						}
-						// #ifndef I2S_INTERNAL
-						// 						else
-						// 						{
-						// 							timerAlarmDisable(timer); // Stop sample audio when M17 Disconnect
-						// 						}
-						// #endif
+						APRSConnect();
 					}
 					else
 					{
-						readyReadM17();
-						transmitM17();
-						pingTimeout = millis() + 600000;
-					}
-					if (millis() > (m17ConectTimeout + 30000))
-					{
-						disconnect_from_host();
-						connect_status = DISCONNECTED;
-#ifndef I2S_INTERNAL
-						timerAlarmDisable(timer);
-#endif
-					}
-
-					if (millis() > NTP_Timeout)
-					{
-						NTP_Timeout = millis() + 86400000;
-						// Serial.println(F("Config NTP"));
-						// setSyncProvider(getNtpTime);
-						configTime(3600 * config.timeZone, 0, "203.150.19.19", "203.150.19.26");
-						// topBar(WiFi.RSSI());
-						vTaskDelay(3000 / portTICK_PERIOD_MS);
-						if (systemUptime == 0)
-							systemUptime = now();
-						// struct tm tmstruct;
-						// getLocalTime(&tmstruct, 5000);
-					}
-
-					if (millis() > pingTimeout)
-					{
-						pingTimeout = millis() + 600000;
-#ifdef DEBUG
-						Serial.println("Ping Gateway to " + WiFi.gatewayIP().toString());
-#endif
-						if (ping_start(WiFi.gatewayIP(), 2, 0, 0, 5) == true)
+						if (aprsClient.available())
 						{
-#ifdef DEBUG
-							Serial.println(F("Ping Success!!"));
+							// pingTimeout = millis() + 300000;                // Reset ping timout
+							String line = aprsClient.readStringUntil('\n'); //อ่านค่าที่ Server ตอบหลับมาทีละบรรทัด
+#ifdef DEBUG_IS
+							printTime();
+							Serial.print("APRS-IS ");
+							Serial.println(line);
 #endif
+							int start_val = line.indexOf(">", 0); // หาตำแหน่งแรกของ >
+							if (start_val > 3)
+							{
+								// raw = (char *)malloc(line.length() + 1);
+								// String src_call = line.substring(0, start_val);
+								// String msg_call = "::" + src_call;
+								// memset(&raw[0], 0, sizeof(raw));
+								// line.toCharArray(&raw[0], start_val + 1);
+								// raw[start_val + 1] = 0;
+								// pkgListUpdate(&raw[0], 0);
+								// free(raw);
+							}
+						}
+						if (aprsFixLocTimeout < millis())
+						{
+							aprsFixLocTimeout = millis() + 600000;
+							String tnc2Raw = send_fix_location();
+							Serial.println("Send APRS:" + tnc2Raw);
+							aprsClient.println(tnc2Raw);
+						}
+					}
+				}
+				if (connect_status == DISCONNECTED)
+				{
+					// if (millis() > (m17ConectTimeout + 10000))
+					// {
+
+					Serial.printf("M17 Connecting to %s[%c]\n", config.reflector_host, current_module);
+					process_connect();
+#ifndef I2S_INTERNAL
+					timerAlarmEnable(timer); // Start sample audio when M17 First Connected.
+#endif
+					// 						}
+					// #ifndef I2S_INTERNAL
+					// 						else
+					// 						{
+					// 							timerAlarmDisable(timer); // Stop sample audio when M17 Disconnect
+					// 						}
+					// #endif
+				}
+				else
+				{
+					readyReadM17();
+					transmitM17();
+					pingTimeout = millis() + 600000;
+				}
+				if (millis() > (m17ConectTimeout + 30000))
+				{
+					disconnect_from_host();
+					connect_status = DISCONNECTED;
+#ifndef I2S_INTERNAL
+					timerAlarmDisable(timer);
+#endif
+				}
+
+				if (millis() > NTP_Timeout)
+				{
+					NTP_Timeout = millis() + 86400000;
+					// Serial.println(F("Config NTP"));
+					// setSyncProvider(getNtpTime);
+					configTime(3600 * config.timeZone, 0, "203.150.19.19", "203.150.19.26");
+					// topBar(WiFi.RSSI());
+					vTaskDelay(3000 / portTICK_PERIOD_MS);
+					time_t systemTime;
+					time(&systemTime);
+					setTime(systemTime);
+					if (systemUptime == 0)
+					{
+						systemUptime = now();
+					}
+					// struct tm tmstruct;
+					// getLocalTime(&tmstruct, 5000);
+					if (config.vpn)
+					{
+						if (!wireguard_active())
+						{
+							Serial.println("Setup Wiregurad VPN!");
+							wireguard_setup();
+						}
+					}
+				}
+
+				if (millis() > pingTimeout)
+				{
+					pingTimeout = millis() + 600000;
+#ifdef DEBUG
+					Serial.println("Ping Gateway to " + WiFi.gatewayIP().toString());
+#endif
+					if (ping_start(WiFi.gatewayIP(), 2, 0, 0, 5) == true)
+					{
+#ifdef DEBUG
+						Serial.println(F("Ping Success!!"));
+#endif
+					}
+					else
+					{
+#ifdef DEBUG
+						Serial.println(F("Ping Fail!"));
+#endif
+						WiFi.disconnect();
+						wifiTTL = 0;
+					}
+
+					if (config.vpn)
+					{
+						IPAddress vpnIP;
+						vpnIP.fromString(String(config.wg_gw_address));
+						Serial.println("Ping VPN to " + vpnIP.toString());
+						if (ping_start(vpnIP, 2, 0, 0, 10) == true)
+						{
+							Serial.println("VPN Ping Success!!");
 						}
 						else
 						{
-#ifdef DEBUG
-							Serial.println(F("Ping Fail!"));
-#endif
-							WiFi.disconnect();
-							wifiTTL = 0;
+							Serial.println("VPN Ping Fail!");
+							wireguard_remove();
+							delay(3000);
+							wireguard_setup();
 						}
 					}
 				}
@@ -2385,7 +2596,7 @@ void frmUpdate(String str)
 	display.print(str);
 	display.display();
 #endif
-	esp_agc_clse(agc_handle);
+	esp_agc_close(agc_handle);
 	// wdtDisplayTimer = millis();
 	// wdtSensorTimer = millis();
 	disableCore0WDT();

@@ -11,12 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License
+#ifndef _ESP_AGC_H_
+#define _ESP_AGC_H_
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#ifndef _ESP_AGC_H_
-#define _ESP_AGC_H_
 
 ////all positive value is valid, negective is error
 typedef enum {
@@ -30,10 +30,10 @@ typedef enum {
 void *esp_agc_open(int agc_mode, int sample_rate);
 void set_agc_config(void *agc_handle, int gain_dB, int limiter_enable, int target_level_dbfs);
 int esp_agc_process(void *agc_handle, short *in_pcm, short *out_pcm, int frame_size, int sample_rate);
-void esp_agc_clse(void *agc_handle);
-
-#endif // _ESP_AGC_H_
+void esp_agc_close(void *agc_handle);
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif // _ESP_AGC_H_

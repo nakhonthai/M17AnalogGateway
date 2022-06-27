@@ -20,8 +20,8 @@
 extern "C" {
 #endif
 
-#define SAMPLE_RATE_HZ 8000      //Supports 32000, 16000, 8000
-#define VAD_FRAME_LENGTH_MS 20    //Supports 10ms, 20ms, 30ms
+#define SAMPLE_RATE_HZ 16000      //Supports 32000, 16000, 8000
+#define VAD_FRAME_LENGTH_MS 10    //Supports 10ms, 20ms, 30ms
 
 /**
  * @brief Sets the VAD operating mode. A more aggressive (higher mode) VAD is more

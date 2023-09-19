@@ -22,8 +22,8 @@ The project made M17AnalogGateway to convert digital voice with M17 mode to Anal
 * 0 Voice / Info Announcements
 * .# Disconnect Active Link
 * ** Reconnect to default connection
-* * A Voice 0-9A-Z
-* * B Local IP
+* A Voice 0-9A-Z
+* B Local IP
 * *xx Link to module 1[A]..26[Z]
   
 ## ESP32DR Simple

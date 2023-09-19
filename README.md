@@ -18,14 +18,13 @@ The project made M17AnalogGateway to convert digital voice with M17 mode to Anal
 ![esp32dr-test](image/ESP32DR_Simple_Test.png)
 
 ## DTMF Command
-|---|:---|
-|DTMF|Comment|
-|0 |Voice / Info Announcements|
-|# |Disconnect Active Link|
-|** |Reconnect to default connection|
-|* |A Voice 0-9A-Z|
-|B |Local IP|
-|*xx |Link to module 1[A]..26[Z]|
+
+0 Voice / Info Announcements
+/# Disconnect Active Link
+** Reconnect to default connection
+* A Voice 0-9A-Z
+* B Local IP
+*xx Link to module 1[A]..26[Z]
   
 ## ESP32DR Simple
 
